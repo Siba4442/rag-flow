@@ -4,9 +4,9 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-mydatabase}
       POSTGRES_USER: ${POSTGRES_USER:-myuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypassword}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,7 +18,7 @@ services:
     image: chromadb/chroma:latest
     profiles: ["chroma"]
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     volumes:
       - chromadata:/data
 
@@ -26,7 +26,7 @@ services:
     image: mongodb/mongodb-atlas-local:latest
     profiles: ["mongo"]
     ports:
-      - "27018:27017"
+      - "127.0.0.1:27018:27017"
 
 volumes:
   pgdata:
