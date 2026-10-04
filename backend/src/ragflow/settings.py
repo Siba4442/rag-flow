@@ -36,6 +36,14 @@ class EmbeddingsProvider(StrEnum):
     GOOGLE_VERTEXAI = "vertexai"
 
 
+class EntityIdPolicy(StrEnum):
+    """How a caller-supplied ``entity_id`` is treated when JWT auth is on."""
+
+    TRUST = "trust"  # rag-api behaviour: caller-asserted (authorize upstream!)
+    CLAIM = "claim"  # only entities listed in the token's ``entities`` claim
+    DENY = "deny"  # ignore entity_id; owner is always the token user
+
+
 class PdfParser(StrEnum):
     PYPDF = "pypdf"
     LLAMAPARSE = "llamaparse"
@@ -67,6 +75,7 @@ class Settings(BaseSettings):
     debug_rag_api: bool = False
     console_json: bool = False
     jwt_secret: str | None = None
+    entity_id_policy: EntityIdPolicy = EntityIdPolicy.CLAIM
     cors_origins: Annotated[list[str], NoDecode] = Field(default_factory=lambda: ["*"])
     serve_frontend: bool = False
     frontend_dist: Path = Path("../frontend/dist")
