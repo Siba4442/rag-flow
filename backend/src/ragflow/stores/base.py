@@ -26,6 +26,16 @@ class FileSummary:
     file_id: str
     filename: str | None
     chunks: int
+    #: Latest ingestion time in epoch milliseconds (None for legacy rows).
+    added_at: int | None = None
+
+
+def ns_to_ms(value: object) -> int | None:
+    """``ingested_at_ns`` metadata (int or numeric string) to epoch ms."""
+    try:
+        return int(str(value)) // 1_000_000 if value not in (None, "") else None
+    except ValueError:
+        return None
 
 
 def chunk_uuid(owner: str, file_id: str, attempt_id: str, chunk_index: int) -> str:
@@ -82,9 +92,13 @@ def summarize(docs: Sequence[Document]) -> list[FileSummary]:
     """Group chunks into per-file summaries (for stores without GROUP BY)."""
     counts: dict[str, int] = {}
     names: dict[str, str | None] = {}
+    added: dict[str, int | None] = {}
     for doc in docs:
         fid = str(doc.metadata.get("file_id"))
         counts[fid] = counts.get(fid, 0) + 1
         source = doc.metadata.get("source")
         names.setdefault(fid, str(source).rsplit("/", 1)[-1] if source else None)
-    return [FileSummary(fid, names[fid], n) for fid, n in counts.items()]
+        ms = ns_to_ms(doc.metadata.get("ingested_at_ns"))
+        if ms is not None and (added.get(fid) is None or ms > (added[fid] or 0)):
+            added[fid] = ms
+    return [FileSummary(fid, names[fid], n, added.get(fid)) for fid, n in counts.items()]

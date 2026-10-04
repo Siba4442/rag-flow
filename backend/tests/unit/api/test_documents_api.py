@@ -235,3 +235,16 @@ def test_internal_errors_are_not_leaked(api: Api, monkeypatch) -> None:
     assert r.status_code == 500
     assert "secret" not in r.text
     assert "(ref " in r.json()["detail"]
+
+
+def test_files_include_added_at_and_info(api: Api) -> None:
+    import time
+
+    before = int(time.time() * 1000) - 1000
+    _upload(api)
+    f = api.client.get("/files").json()[0]
+    assert f["added_at"] >= before
+    info = api.client.get("/info").json()
+    assert info["vector_store"] == "pgvector"  # settings default; store is in-memory in tests
+    assert info["chat_model"] is None  # chat not configured in this fixture
+    assert "key" not in str(info).lower()

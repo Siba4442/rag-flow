@@ -208,6 +208,7 @@ class FileSummaryResponse(BaseModel):
     file_id: str
     filename: str | None
     chunks: int
+    added_at: int | None = None
 
 
 # ---------------------------------------------------------------------------- routes
@@ -236,6 +237,26 @@ async def get_all_ids(
         ) from exc
 
 
+class InfoResponse(BaseModel):
+    chat_model: str | None
+    embeddings_model: str
+    embeddings_provider: str
+    vector_store: str
+
+
+@router.get("/info", response_model=InfoResponse)
+async def info(services: ServicesDep) -> InfoResponse:
+    """Model and store names for the UI's status card (no credentials)."""
+    s = services.settings
+    chat = s.chat_model.split(":", 1)[-1] if services.chat_graph is not None else None
+    return InfoResponse(
+        chat_model=chat,
+        embeddings_model=s.resolved_embeddings_model,
+        embeddings_provider=str(s.embeddings_provider),
+        vector_store=str(s.vector_db_type),
+    )
+
+
 @router.get("/files", response_model=list[FileSummaryResponse])
 async def list_files(
     request: Request, services: ServicesDep, entity_id: str | None = None
@@ -244,7 +265,10 @@ async def list_files(
     scope = resolve_scope(request, entity_id)
     files = await services.store.list_files(scope.owners)
     return [
-        FileSummaryResponse(file_id=f.file_id, filename=f.filename, chunks=f.chunks) for f in files
+        FileSummaryResponse(
+            file_id=f.file_id, filename=f.filename, chunks=f.chunks, added_at=f.added_at
+        )
+        for f in files
     ]
 
 

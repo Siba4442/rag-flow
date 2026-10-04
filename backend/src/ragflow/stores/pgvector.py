@@ -19,7 +19,7 @@ from langchain_postgres.v2.indexes import HNSWIndex
 from sqlalchemy import bindparam, text
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from ragflow.stores.base import FileSummary, unique
+from ragflow.stores.base import FileSummary, ns_to_ms, unique
 
 logger = logging.getLogger(__name__)
 
@@ -193,12 +193,14 @@ class PgVectorScopedStore:
         if not owners:
             return []
         rows = await self._fetch(
-            "SELECT file_id, max(langchain_metadata->>'source'), count(*) "
+            "SELECT file_id, max(langchain_metadata->>'source'), count(*), "
+            "max((langchain_metadata->>'ingested_at_ns')::bigint) "
             f"FROM {self._qualified} WHERE user_id IN :owners GROUP BY file_id ORDER BY file_id",
             owners=unique(owners),
         )
         return [
-            FileSummary(r[0], r[1].rsplit("/", 1)[-1] if r[1] else None, int(r[2])) for r in rows
+            FileSummary(r[0], r[1].rsplit("/", 1)[-1] if r[1] else None, int(r[2]), ns_to_ms(r[3]))
+            for r in rows
         ]
 
     async def health(self) -> bool:

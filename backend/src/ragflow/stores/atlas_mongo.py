@@ -14,7 +14,7 @@ from typing import Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
-from ragflow.stores.base import FileSummary, unique
+from ragflow.stores.base import FileSummary, ns_to_ms, unique
 
 TEXT_KEY = "text"
 _INTERNAL = ("_id", "embedding", TEXT_KEY)
@@ -112,7 +112,14 @@ class AtlasMongoScopedStore:
             return []
         pipeline = [
             {"$match": _scope(None, owners)},
-            {"$group": {"_id": "$file_id", "source": {"$max": "$source"}, "n": {"$sum": 1}}},
+            {
+                "$group": {
+                    "_id": "$file_id",
+                    "source": {"$max": "$source"},
+                    "n": {"$sum": 1},
+                    "added": {"$max": "$ingested_at_ns"},
+                }
+            },
             {"$sort": {"_id": 1}},
         ]
         rows = await asyncio.to_thread(lambda: list(self._collection.aggregate(pipeline)))
@@ -121,6 +128,7 @@ class AtlasMongoScopedStore:
                 str(r["_id"]),
                 str(r["source"]).rsplit("/", 1)[-1] if r.get("source") else None,
                 int(r["n"]),
+                ns_to_ms(r.get("added")),
             )
             for r in rows
         ]
