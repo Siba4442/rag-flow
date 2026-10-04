@@ -15,69 +15,81 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
     <div class="app" id="app">
-      <aside class="rail" id="rail" aria-label="Library">
+      <!-- ============================================================ left: rail (3 cols) -->
+      <aside class="rail" id="rail" aria-label="Navigation and library">
         <header class="rail-head">
-          <h1 class="wordmark">RAG Flow</h1>
-          <button class="icon-btn only-mobile" id="close-rail" type="button" aria-label="Close library">✕</button>
+          <div class="brand"><span class="mark" aria-hidden="true">1</span><span class="brand-name">RAG Flow</span></div>
+          <button class="icon-btn only-mobile" id="close-rail" type="button" aria-label="Close menu">✕</button>
         </header>
 
-        <section class="rail-section" aria-labelledby="lib-title">
-          <div class="section-head">
-            <h2 id="lib-title">Your files</h2>
-            <span class="hint" id="scope-hint"></span>
+        <nav class="nav" aria-label="Views" role="tablist">
+          <button class="nav-item mode" role="tab" data-mode="home" aria-selected="true">Home</button>
+          <button class="nav-item mode" role="tab" data-mode="chat" aria-selected="false">Ask</button>
+          <button class="nav-item mode" role="tab" data-mode="search" aria-selected="false">Search passages</button>
+        </nav>
+
+        <section class="rail-group grow" aria-labelledby="lib-title">
+          <div class="group-head">
+            <h2 id="lib-title">Library</h2>
+            <span class="count" id="scope-hint"></span>
           </div>
-          <label class="dropzone" id="dropzone">
-            <input type="file" id="file-input" multiple hidden />
-            <span>Drop files here or <u>browse</u></span>
-            <small>PDF, Word, Excel, PowerPoint, Markdown, CSV, code and plain text</small>
-          </label>
           <ul class="file-list" id="file-list" aria-live="polite"></ul>
         </section>
 
-        <section class="rail-section" aria-labelledby="threads-title">
-          <div class="section-head">
+        <section class="rail-group" aria-labelledby="threads-title">
+          <div class="group-head">
             <h2 id="threads-title">Conversations</h2>
             <button class="text-btn" id="new-thread" type="button">New</button>
           </div>
           <ul class="thread-list" id="thread-list"></ul>
         </section>
 
-        <footer class="rail-foot">
-          <button class="text-btn" id="open-settings" type="button">Connection settings</button>
-          <div class="segmented" role="radiogroup" aria-label="Theme">
-            <button type="button" role="radio" data-theme-choice="light">Light</button>
-            <button type="button" role="radio" data-theme-choice="dark">Dark</button>
-            <button type="button" role="radio" data-theme-choice="system">Auto</button>
+        <footer class="system-card" id="system-card">
+          <dl id="system-info"></dl>
+          <p class="health" id="health"><span class="dot" aria-hidden="true"></span><span>Checking…</span></p>
+          <div class="rail-foot">
+            <button class="text-btn" id="open-settings" type="button">Settings</button>
+            <div class="segmented" role="radiogroup" aria-label="Theme">
+              <button type="button" role="radio" data-theme-choice="light">Light</button>
+              <button type="button" role="radio" data-theme-choice="dark">Dark</button>
+              <button type="button" role="radio" data-theme-choice="system">Auto</button>
+            </div>
           </div>
         </footer>
       </aside>
 
+      <!-- ============================================================ centre (6 cols) -->
       <main class="desk">
-        <nav class="desk-bar" aria-label="Mode">
-          <button class="icon-btn only-mobile" id="open-rail" type="button" aria-label="Open library">☰</button>
-          <div class="modes" role="tablist">
-            <button role="tab" class="mode" id="tab-chat" aria-selected="true" data-mode="chat">Ask</button>
-            <button role="tab" class="mode" id="tab-search" aria-selected="false" data-mode="search">Search passages</button>
-          </div>
+        <div class="desk-bar">
+          <button class="icon-btn only-mobile" id="open-rail" type="button" aria-label="Open menu">☰</button>
+          <h1 class="view-title" id="view-title">Home</h1>
           <span class="status" id="status" role="status"></span>
-        </nav>
+        </div>
 
         <section class="page" id="page"></section>
 
         <form class="composer" id="composer" autocomplete="off">
           <label class="sr-only" for="prompt">Your question</label>
           <textarea id="prompt" rows="1" placeholder="Ask about the selected files"></textarea>
-          <button class="primary" id="send" type="submit">Ask</button>
+          <button class="btn-primary" id="send" type="submit">Ask</button>
         </form>
       </main>
 
-      <aside class="margin" id="margin" aria-label="Sources"></aside>
+      <!-- ============================================================ right: evidence (3 cols) -->
+      <aside class="evidence" aria-label="Evidence">
+        <div class="evidence-body" id="margin"></div>
+        <label class="dropzone" id="dropzone">
+          <input type="file" id="file-input" multiple hidden />
+          <strong>Add files</strong>
+          <span>Drop here or <u>browse</u>. PDF, Word, Excel, PowerPoint, Markdown, CSV, code.</span>
+        </label>
+      </aside>
     </div>
 
     <dialog class="sheet" id="settings">
@@ -95,7 +107,7 @@
         </label>
         <div class="sheet-actions">
           <button value="cancel" class="text-btn">Cancel</button>
-          <button value="save" class="primary">Save</button>
+          <button value="save" class="btn-primary">Save</button>
         </div>
       </form>
     </dialog>

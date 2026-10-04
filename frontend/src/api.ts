@@ -7,6 +7,14 @@ export interface FileSummary {
   file_id: string;
   filename: string | null;
   chunks: number;
+  added_at?: number | null;
+}
+
+export interface SystemInfo {
+  chat_model: string | null;
+  embeddings_model: string;
+  embeddings_provider: string;
+  vector_store: string;
 }
 
 export interface ChunkDoc {
@@ -90,6 +98,8 @@ export const api = {
   health: () => request<{ status: string }>("/health"),
 
   files: () => request<FileSummary[]>(`/files?${withEntity()}`),
+
+  info: () => request<SystemInfo>("/info"),
 
   upload(file: File, fileId: string): Promise<{ status: boolean; message: string }> {
     const form = new FormData();

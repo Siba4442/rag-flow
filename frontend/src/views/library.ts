@@ -1,4 +1,5 @@
-// Library rail: upload, list, select (= chat/search scope), read and delete files.
+// Library: upload (evidence-column drop zone), list in the rail, select (= scope for
+// Ask and Search), read and delete.
 
 import { api, ApiError, type FileSummary } from "../api";
 import { $, h, plural } from "../dom";
@@ -7,24 +8,31 @@ import { getSelected, isSelected, newId, setSelected, toggleSelected } from "../
 export interface LibraryDeps {
   setStatus(text: string, tone?: "error" | "ok"): void;
   openReader(fileId: string, title: string): void;
+  onChange?(): void;
 }
 
 let files: FileSummary[] = [];
 const pending = new Map<string, string>(); // temp key -> filename while uploading
 
-export function knownFiles(): FileSummary[] {
-  return files;
-}
+export const knownFiles = (): FileSummary[] => files;
 
 export function fileTitle(fileId: string): string {
-  const f = files.find((x) => x.file_id === fileId);
-  return f?.filename ?? fileId;
+  return files.find((x) => x.file_id === fileId)?.filename ?? fileId;
+}
+
+export function extOf(name: string | null): string {
+  const ext = (name ?? "").split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    pdf: "PDF", doc: "DOC", docx: "DOC", xls: "XLS", xlsx: "XLS", csv: "CSV",
+    ppt: "PPT", pptx: "PPT", md: "MD", txt: "TXT", json: "JSON",
+  };
+  return map[ext] ?? (ext ? ext.slice(0, 4).toUpperCase() : "FILE");
 }
 
 export async function refreshLibrary(deps: LibraryDeps): Promise<void> {
   try {
     files = await api.files();
-    // Drop selections for files that no longer exist.
+    files.sort((a, b) => (b.added_at ?? 0) - (a.added_at ?? 0));
     const ids = new Set(files.map((f) => f.file_id));
     const kept = getSelected().filter((id) => ids.has(id));
     if (kept.length !== getSelected().length) setSelected(kept);
@@ -32,6 +40,7 @@ export async function refreshLibrary(deps: LibraryDeps): Promise<void> {
     deps.setStatus(err instanceof ApiError ? err.message : "Couldn't load your files.", "error");
   }
   renderLibrary(deps);
+  deps.onChange?.();
 }
 
 function renderLibrary(deps: LibraryDeps): void {
@@ -39,11 +48,17 @@ function renderLibrary(deps: LibraryDeps): void {
   list.replaceChildren();
   for (const [key, name] of pending) {
     list.append(
-      h("li", { class: "file pending", "data-key": key }, h("span", { class: "file-name" }, name), h("span", { class: "hint" }, "Reading…")),
+      h(
+        "li",
+        { class: "file pending", "data-key": key },
+        h("span", { class: "spinner", "aria-hidden": "true" }),
+        h("span", { class: "file-name" }, name),
+        h("span", { class: "count" }, "Reading"),
+      ),
     );
   }
   if (!files.length && !pending.size) {
-    list.append(h("li", { class: "empty" }, "No files yet. Add a document to start asking questions about it."));
+    list.append(h("li", { class: "empty" }, "No files yet. Use Add files to upload your first document."));
   }
   for (const f of files) {
     const id = `sel-${f.file_id}`;
@@ -56,10 +71,11 @@ function renderLibrary(deps: LibraryDeps): void {
     list.append(
       h(
         "li",
-        { class: "file" },
+        { class: `file${isSelected(f.file_id) ? " is-on" : ""}` },
         box,
-        h("label", { for: id, class: "file-name" }, f.filename ?? f.file_id),
-        h("span", { class: "hint file-meta" }, plural(f.chunks, "passage")),
+        h("span", { class: "ext", "aria-hidden": "true" }, extOf(f.filename)),
+        h("label", { for: id, class: "file-name", title: f.filename ?? f.file_id }, f.filename ?? f.file_id),
+        h("span", { class: "count", title: plural(f.chunks, "passage") }, String(f.chunks)),
         h("span", { class: "file-actions" }, read, del),
       ),
     );
@@ -69,7 +85,11 @@ function renderLibrary(deps: LibraryDeps): void {
 
 export function updateScopeHint(): void {
   const n = getSelected().length;
-  $("#scope-hint").textContent = n ? `${n} selected` : "";
+  $("#scope-hint").textContent = files.length ? `${n} of ${files.length} in scope` : "";
+  document.querySelectorAll<HTMLLIElement>("#file-list .file").forEach((li) => {
+    const box = li.querySelector<HTMLInputElement>("input[type=checkbox]");
+    li.classList.toggle("is-on", Boolean(box?.checked));
+  });
 }
 
 async function removeFile(f: FileSummary, deps: LibraryDeps): Promise<void> {

@@ -35,7 +35,7 @@ export async function search(query: string, deps: SearchDeps): Promise<void> {
   try {
     const hits = await api.search(query, ids);
     deps.page.replaceChildren(
-      h("div", { class: "turn user" }, h("p", {}, query)),
+      h("div", { class: "turn user" }, h("p", { class: "q" }, query)),
       h(
         "p",
         { class: "result-summary" },

@@ -1,8 +1,7 @@
 /* RAG Flow design tokens: three layers (primitive → semantic → component).
    Direction: premium Swiss. Pure neutrals, one restrained accent (gold, used only as
    the evidence highlighter and the selection state), tight grotesk type, and a 4px
-   rhythm set by the dense home feed. Proposal for review at /design; not yet used by
-   the live UI. */
+   rhythm set by the dense home feed. Shown at /design and used by the live UI. */
 
 /* ============================================================ 1. PRIMITIVES */
 :root {
@@ -70,6 +69,9 @@
   --r-chip: 2px;
   --r-control: 6px;
   --r-panel: 10px;
+  /* v2 (approved): radius grows with the layer */
+  --r-ctl: 8px;
+  --r-tile: 16px;
 
   --dur-fast: 120ms;
   --dur-base: 180ms;
@@ -156,6 +158,9 @@
      a two-line feed row = 8 pad + 20 title + 16 meta + 12 pad = 56px;
      a one-line row = 8 + 20 + 8 = 36px. Every block snaps to the 4px baseline. */
   --baseline: 4px;
+  --cols: 12;          /* symmetric frame: 3 / 6 / 3 */
+  --col-gap: var(--s-4);
+  --tile-pad: var(--s-6);
   --row-1: 36px;
   --row-2: 56px;
   --gutter: var(--s-4);

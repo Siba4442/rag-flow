@@ -7,9 +7,10 @@ function inline(text: string): string {
     .replace(/`([^`]+)`/g, "<code>$1</code>")
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>")
+    // A no-break space ties each citation to the word before it.
     .replace(
-      /\[(\d{1,2})\]/g,
-      '<a class="cite" href="#source-$1" data-cite="$1" aria-label="Source $1">$1</a>',
+      /\s*\[(\d{1,2})\]/g,
+      '&nbsp;<a class="cite" href="#source-$1" data-cite="$1" aria-label="Source $1">$1</a>',
     );
 }
 

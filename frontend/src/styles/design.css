@@ -1,15 +1,9 @@
-/* /design, version 2: symmetric 3 / 6 / 3 frame on 12 columns, bento home,
-   citation-mark brand. v2-only values live in :root below so the live app
-   (tokens.css) is untouched until this direction is approved. */
+/* /design, version 2 (approved, live): symmetric 3 / 6 / 3 frame on 12 columns,
+   bento home, citation-mark brand. Shared values live in tokens.css. */
 @import "./tokens.css";
 
 :root {
-  --cols: 12;
-  --col-gap: var(--s-4);
   --page-max: 1312px;
-  --r-ctl: 8px;
-  --r-tile: 16px;
-  --tile-pad: var(--s-6);
 }
 
 *,

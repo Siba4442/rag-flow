@@ -1,10 +1,10 @@
-// "Ask" mode: streamed answers with [n] citations linked to margin notes.
+// Ask view: streamed answers with [n] citations linked to the evidence column.
 
 import { api, ApiError, streamChat, type Source, type ThreadMessage } from "../api";
 import { h } from "../dom";
 import { renderAnswer } from "../render";
-import { getSelected, getThreads, newId, upsertThread } from "../store";
-import { linkCitations, renderMargin, sourceNotes } from "./margin";
+import { getSelected, getThread, getThreads, newId, recordActivity, upsertThread } from "../store";
+import { coverageOf, linkCitations, renderMargin, sourceNotes } from "./margin";
 
 const STEP_LABELS: Record<string, string> = {
   generate_query_or_respond: "Reading your question",
@@ -36,23 +36,24 @@ function intro(deps: ChatDeps): void {
         "p",
         {},
         selected
-          ? "Questions are answered from the files ticked in your library. Every claim points to the passage it came from, shown in the margin."
-          : "Tick one or more files in your library, then ask a question. Answers cite the exact passages they rely on.",
+          ? `Answers come only from the ${selected === 1 ? "file" : `${selected} files`} in scope, and every claim points to the passage it came from.`
+          : "Tick files in the library to put them in scope, then ask. Every claim will point to its passage.",
       ),
     ),
   );
 }
 
-function marginFor(deps: ChatDeps, sources: Source[]): void {
+function marginFor(deps: ChatDeps, sources: Source[], answer = ""): void {
   renderMargin(deps.margin, sourceNotes(sources), {
     heading: "Sources",
-    empty: "Passages used in the latest answer appear here.",
+    empty: "Passages behind the latest answer appear here, numbered to match its citations.",
+    coverage: sources.length ? coverageOf(answer) : null,
     onOpen: deps.openReader,
   });
 }
 
 function messageEl(msg: ThreadMessage): HTMLElement {
-  if (msg.role === "user") return h("div", { class: "turn user" }, h("p", {}, msg.content));
+  if (msg.role === "user") return h("div", { class: "turn user" }, h("p", { class: "q" }, msg.content));
   const body = h("div", { class: "answer" });
   body.innerHTML = renderAnswer(msg.content); // renderAnswer escapes before formatting
   return h("div", { class: "turn assistant" }, body);
@@ -68,8 +69,9 @@ export async function showThread(id: string, deps: ChatDeps): Promise<void> {
     if (!messages.length) return intro(deps);
     for (const m of messages) deps.page.append(messageEl(m));
     const last = messages.at(-1);
-    marginFor(deps, last?.sources ?? []);
+    marginFor(deps, last?.sources ?? [], last?.role === "assistant" ? last.content : "");
     linkCitations(deps.page, deps.margin);
+    deps.page.scrollTop = deps.page.scrollHeight;
   } catch (err) {
     intro(deps);
     if (!(err instanceof ApiError && err.status === 503)) {
@@ -94,7 +96,8 @@ export async function ask(question: string, deps: ChatDeps): Promise<void> {
   deps.page.append(turn);
   turn.scrollIntoView({ block: "end" });
 
-  upsertThread({ id: threadId, title: question.slice(0, 80), updatedAt: Date.now() });
+  const existing = getThread(threadId);
+  upsertThread({ ...existing, id: threadId, title: existing?.title ?? question.slice(0, 80), updatedAt: Date.now() });
   controller?.abort();
   controller = new AbortController();
   let text = "";
@@ -119,12 +122,23 @@ export async function ask(question: string, deps: ChatDeps): Promise<void> {
       controller.signal,
     );
     deps.setStatus("");
+    const cites = new Set([...text.matchAll(/\[(\d{1,2})\]/g)].map((m) => m[1])).size;
+    const files = new Set(sources.map((s) => s.file_id)).size;
+    recordActivity({ ts: Date.now(), cites, multiSource: sources.length > 1 || files > 1 });
+    const meta = getThread(threadId);
+    upsertThread({
+      id: threadId,
+      title: meta?.title ?? question.slice(0, 80),
+      updatedAt: Date.now(),
+      snippet: text.replace(/\s*\[\d+\]|\*\*/g, "").split(/(?<=[.!?])\s/)[0]?.slice(0, 120) ?? "",
+      cites,
+    });
   } catch (err) {
     deps.setStatus(err instanceof ApiError ? err.message : "The answer stopped unexpectedly. Try again.", "error");
     if (!text) turn.remove();
   } finally {
     body.classList.remove("streaming");
   }
-  marginFor(deps, sources);
+  marginFor(deps, sources, text);
   linkCitations(turn, deps.margin);
 }

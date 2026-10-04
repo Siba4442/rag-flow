@@ -11,9 +11,25 @@ export interface ThreadMeta {
   id: string;
   title: string;
   updatedAt: number;
+  /** First line of the latest answer, for the home feed. */
+  snippet?: string;
+  /** Distinct citations in the latest answer. */
+  cites?: number;
 }
 
-const KEYS = { settings: "ragflow.settings", threads: "ragflow.threads", selected: "ragflow.selected" };
+/** One answered question, kept in this browser for the "This week" tile. */
+export interface Activity {
+  ts: number;
+  cites: number;
+  multiSource: boolean;
+}
+
+const KEYS = {
+  settings: "ragflow.settings",
+  threads: "ragflow.threads",
+  selected: "ragflow.selected",
+  activity: "ragflow.activity",
+};
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -35,6 +51,7 @@ function write(key: string, value: unknown): void {
 let settings: Settings = { baseUrl: "", token: "", entityId: "", ...read<Partial<Settings>>(KEYS.settings, {}) };
 let threads: ThreadMeta[] = read<ThreadMeta[]>(KEYS.threads, []);
 let selected = new Set<string>(read<string[]>(KEYS.selected, []));
+let activity: Activity[] = read<Activity[]>(KEYS.activity, []);
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -62,6 +79,15 @@ export function upsertThread(meta: ThreadMeta): void {
 export function removeThread(id: string): void {
   threads = threads.filter((t) => t.id !== id);
   write(KEYS.threads, threads);
+  emit();
+}
+
+export const getThread = (id: string): ThreadMeta | undefined => threads.find((t) => t.id === id);
+
+export const getActivity = (): Activity[] => activity;
+export function recordActivity(entry: Activity): void {
+  activity = [...activity, entry].slice(-500);
+  write(KEYS.activity, activity);
   emit();
 }
 
