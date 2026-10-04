@@ -1,0 +1,33 @@
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-mydatabase}
+      POSTGRES_USER: ${POSTGRES_USER:-myuser}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mypassword}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      retries: 10
+
+  chroma:
+    image: chromadb/chroma:latest
+    profiles: ["chroma"]
+    ports:
+      - "8001:8000"
+    volumes:
+      - chromadata:/data
+
+  mongo:
+    image: mongodb/mongodb-atlas-local:latest
+    profiles: ["mongo"]
+    ports:
+      - "27018:27017"
+
+volumes:
+  pgdata:
+  chromadata:

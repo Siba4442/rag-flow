@@ -1,0 +1,19 @@
+# Reference project (its own nested git repo, kept read-only)
+rag-api/
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Node
+node_modules/
+dist/
+
+# Runtime / secrets
+uploads/
+.env
+*.log

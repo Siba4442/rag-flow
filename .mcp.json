@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "langchain-docs": {
+      "type": "http",
+      "url": "https://docs.langchain.com/mcp"
+    },
+    "mcp-git-commit-generator": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": [
+        "mcp-git-commit-generator"
+      ],
+      "env": {}
+    }
+  }
+}
