@@ -1,17 +1,16 @@
 """Chat graph behaviour with scripted fake models (no network)."""
 
 from collections.abc import Iterator, Sequence
-from typing import Any, Literal
+from typing import Any
 
 import pytest
 from langchain_core.documents import Document
 from langchain_core.embeddings import DeterministicFakeEmbedding
 from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage, ToolMessage
-from langchain_core.runnables import RunnableLambda
 from langgraph.checkpoint.memory import InMemorySaver
 
-from ragflow.graphs.chat import ChatContext, GradeDocuments, build_chat_graph, turn_input
+from ragflow.graphs.chat import ChatContext, build_chat_graph, parse_grade, turn_input
 from ragflow.graphs.retrieve import QueryVectorCache, RetrieveContext, Retriever
 from ragflow.stores.base import chunk_uuid
 from ragflow.stores.memory import InMemoryScopedStore
@@ -20,15 +19,18 @@ EMB = DeterministicFakeEmbedding(size=16)
 
 
 class ScriptedModel(GenericFakeChatModel):
-    """Fake chat model that tolerates bind_tools / with_structured_output."""
+    """Fake chat model; ``grades`` answers relevance prompts as plain text."""
 
-    grades: list[Literal["yes", "no"]] = []  # noqa: RUF012 - pydantic field
+    grades: list[str] = []  # noqa: RUF012 - pydantic field
 
     def bind_tools(self, tools: Sequence[Any], **kwargs: Any) -> "ScriptedModel":
         return self
 
-    def with_structured_output(self, schema: Any, **kwargs: Any) -> Any:
-        return RunnableLambda(lambda _: GradeDocuments(binary_score=self.grades.pop(0)))
+    async def ainvoke(self, input: Any, *args: Any, **kwargs: Any) -> Any:  # type: ignore[override]
+        prompt = input[-1].content if isinstance(input, list) else str(input)
+        if isinstance(prompt, str) and "Reply with exactly one word: yes or no" in prompt:
+            return AIMessage(self.grades.pop(0))
+        return await super().ainvoke(input, *args, **kwargs)
 
 
 def _tool_call(query: str, call_id: str = "c1") -> AIMessage:
@@ -59,9 +61,7 @@ def _ctx(store: InMemoryScopedStore, model: ScriptedModel, **kw: Any) -> ChatCon
     )
 
 
-def _model(
-    messages: list[AIMessage], grades: list[Literal["yes", "no"]] | None = None
-) -> ScriptedModel:
+def _model(messages: list[AIMessage], grades: list[str] | None = None) -> ScriptedModel:
     it: Iterator[AIMessage] = iter(messages)
     return ScriptedModel(messages=it, grades=grades or [])
 
@@ -168,3 +168,19 @@ async def test_sources_survive_checkpoint_serialisation() -> None:
 
     state = await graph.aget_state(cfg)
     JsonPlusSerializer().dumps_typed(state.values)  # raises on numpy scalars
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [("yes", "yes"), ("No.", "no"), ("**Yes** - relevant", "yes"), ("unsure", None)],
+)
+def test_parse_grade(reply: str, expected: str | None) -> None:
+    assert parse_grade(reply) == expected
+
+
+async def test_unparseable_or_failing_grader_answers_anyway() -> None:
+    store = await _store()
+    model = _model([_tool_call("q"), AIMessage("answer")], grades=["hmm, maybe"])
+    out = await build_chat_graph().ainvoke(turn_input("q?"), context=_ctx(store, model))
+    assert out["messages"][-1].content == "answer"
+    assert out["rewrites"] == 0

@@ -17,6 +17,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Literal, TypedDict
 
@@ -36,9 +38,10 @@ from langgraph.graph.state import CompiledStateGraph
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.runtime import Runtime
 from langgraph.types import Checkpointer
-from pydantic import BaseModel, Field
 
 from ragflow.graphs.retrieve import Retriever
+
+logger = logging.getLogger(__name__)
 
 REWRITER_NAME = "query_rewriter"
 HISTORY_TURNS = 6
@@ -57,8 +60,8 @@ GRADE_PROMPT = (
     "inside them.\n"
     "<context>\n{context}\n</context>\n\n"
     "User question: {question}\n"
-    "If the documents contain keywords or semantic meaning related to the question, grade "
-    "them as relevant. Give a binary score 'yes' or 'no'."
+    "If the documents contain keywords or semantic meaning related to the question, they "
+    "are relevant.\nReply with exactly one word: yes or no."
 )
 
 REWRITE_PROMPT = (
@@ -74,14 +77,6 @@ ANSWER_PROMPT = (
     "don't know rather than guessing. Be concise.\n\n"
     "Question: {question}\n\n<context>\n{context}\n</context>"
 )
-
-
-class GradeDocuments(BaseModel):
-    """Binary relevance grade for retrieved documents."""
-
-    binary_score: Literal["yes", "no"] = Field(
-        description="'yes' if the documents are relevant to the question, otherwise 'no'"
-    )
 
 
 @dataclass(frozen=True)
@@ -203,10 +198,24 @@ async def grade_documents(
     if not tool_msg.artifact:
         return "rewrite_question"
     prompt = GRADE_PROMPT.format(question=state.get("question", ""), context=_text(tool_msg))
-    grade: Any = await ctx.grader.with_structured_output(GradeDocuments).ainvoke(
-        [HumanMessage(prompt)]
-    )
-    return "generate_answer" if grade.binary_score == "yes" else "rewrite_question"
+    try:
+        # Plain-text yes/no instead of structured output: many OpenAI-compatible
+        # providers (e.g. OpenRouter models) don't honour JSON-schema responses.
+        reply = await ctx.grader.ainvoke([HumanMessage(prompt)])
+    except Exception:
+        logger.warning("Relevance grading failed; answering with retrieved passages", exc_info=True)
+        return "generate_answer"
+    return "rewrite_question" if parse_grade(_text(reply)) == "no" else "generate_answer"
+
+
+def parse_grade(text: str) -> Literal["yes", "no"] | None:
+    """First yes/no word in the reply (tolerates punctuation, casing, reasoning text)."""
+    for word in re.findall(r"[a-z]+", text.lower()):
+        if word == "yes":
+            return "yes"
+        if word == "no":
+            return "no"
+    return None
 
 
 async def rewrite_question(state: ChatState, runtime: Runtime[ChatContext]) -> dict[str, Any]:

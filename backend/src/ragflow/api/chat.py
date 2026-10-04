@@ -32,7 +32,23 @@ router = APIRouter(prefix="/chat", tags=["chat"])
 
 ServicesDep = Annotated[Services, Depends(get_services)]
 
-STREAM_NODES = frozenset({"generate_answer", "generate_query_or_respond"})
+ANSWER_NODE = "generate_answer"
+ROUTER_NODE = "generate_query_or_respond"
+
+
+def _chunk_text(chunk: object) -> str:
+    if isinstance(chunk, AIMessageChunk) and not chunk.tool_call_chunks:
+        return chunk.content if isinstance(chunk.content, str) else ""
+    return ""
+
+
+def _has_tool_call(update: object) -> bool:
+    messages = update.get("messages", []) if isinstance(update, dict) else []
+    return any(getattr(m, "tool_calls", None) for m in messages)
+
+
+def _token(text: str) -> dict[str, str]:
+    return {"event": "token", "data": json.dumps({"text": text})}
 
 
 class ChatRequest(BaseModel):
@@ -116,6 +132,9 @@ async def chat(body: ChatRequest, request: Request, services: ServicesDep) -> Ev
     config = {"configurable": {"thread_id": _thread_key(request, body.thread_id)}}
 
     async def events() -> AsyncIterator[dict[str, str]]:
+        # Text from the routing node is held back: if that turn ends in a tool call, it
+        # was only a preamble ("Let me look that up…") and must not reach the answer.
+        held: list[str] = []
         try:
             async for part in graph.astream(
                 turn_input(body.message),
@@ -127,18 +146,20 @@ async def chat(body: ChatRequest, request: Request, services: ServicesDep) -> Ev
                 if part["type"] == "messages":
                     chunk, meta = part["data"]
                     node = meta.get("langgraph_node")
-                    if (
-                        node in STREAM_NODES
-                        and isinstance(chunk, AIMessageChunk)
-                        and not chunk.tool_call_chunks
-                        and isinstance(chunk.content, str)
-                        and chunk.content
-                    ):
-                        yield {"event": "token", "data": json.dumps({"text": chunk.content})}
+                    text = _chunk_text(chunk)
+                    if text and node == ANSWER_NODE:
+                        yield _token(text)
+                    elif text and node == ROUTER_NODE:
+                        held.append(text)
                 elif part["type"] == "updates":
                     for node, update in (part["data"] or {}).items():
+                        if node == ROUTER_NODE:
+                            if not _has_tool_call(update):
+                                for text in held:  # it answered directly
+                                    yield _token(text)
+                            held.clear()
                         yield {"event": "step", "data": json.dumps({"node": node})}
-                        if node == "generate_answer" and update:
+                        if node == ANSWER_NODE and update:
                             sources = update.get("sources", [])
                             yield {"event": "sources", "data": json.dumps(sources, default=str)}
             yield {"event": "done", "data": json.dumps({"thread_id": body.thread_id})}
