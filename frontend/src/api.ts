@@ -42,8 +42,11 @@ export class ApiError extends Error {
   }
 }
 
+// Dev: Vite proxies /api to the backend. Built: served by FastAPI on the same origin.
+const DEFAULT_BASE = import.meta.env.DEV ? "/api" : "";
+
 function base(): string {
-  return (getSettings().baseUrl || "/api").replace(/\/$/, "");
+  return (getSettings().baseUrl || DEFAULT_BASE).replace(/\/$/, "");
 }
 
 function headers(extra: Record<string, string> = {}): Record<string, string> {
