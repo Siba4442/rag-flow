@@ -104,7 +104,7 @@ function libraryCard(): HTMLElement {
     { class: "tile-card stat-card" },
     h("p", { class: "card-label" }, "Library"),
     h("p", { class: "big-num" }, String(files.length), h("span", {}, files.length === 1 ? " file" : " files")),
-    h("p", { class: "sub-num" }, `${passages.toLocaleString()} passages searchable`),
+    h("p", { class: "sub-num" }, `${plural(passages, "passage").replace(String(passages), passages.toLocaleString())} searchable`),
     files.length ? bar : h("div", { class: "type-bar empty" }),
     files.length ? legend : h("p", { class: "hint" }, "Add files to see the mix."),
   );
