@@ -5,134 +5,213 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>RAG Flow design system</title>
+    <script>
+      try {
+        const t = localStorage.getItem("ragflow.theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>
   <body>
+    <!-- ================================================================ header (centred) -->
     <header class="tile-head">
-      <div class="tile-title">
-        <p class="wordmark">RAG Flow</p>
-        <h1>Design system</h1>
-        <p class="lede">
-          A proposal to judge before it reaches the app. Pure neutrals, one gold accent that
-          only marks evidence and selection, tight grotesk type, and a 4px rhythm set by the
-          home feed.
-        </p>
+      <div class="brand">
+        <span class="mark" aria-hidden="true">1</span>
+        <span class="brand-name">RAG Flow</span>
       </div>
+      <h1 class="headline">Every claim, cited.</h1>
+      <p class="lede">
+        Design system, version 2. A symmetric 3 / 6 / 3 frame on a 12-column grid, a bento home
+        that turns empty space into useful context, and a citation mark as the brand.
+      </p>
       <div class="tile-controls" role="group" aria-label="Preview controls">
         <div class="segmented" role="radiogroup" aria-label="Theme">
           <button type="button" role="radio" data-theme-choice="light">Light</button>
           <button type="button" role="radio" data-theme-choice="dark">Dark</button>
-          <button type="button" role="radio" data-theme-choice="system">System</button>
+          <button type="button" role="radio" data-theme-choice="system">Auto</button>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="baseline-toggle" />
-          <span>Show 4px baseline</span>
-        </label>
+        <label class="switch"><input type="checkbox" id="baseline-toggle" /><span>4px baseline</span></label>
+        <label class="switch"><input type="checkbox" id="grid-toggle" /><span>12-column grid</span></label>
       </div>
     </header>
 
     <main class="tile">
-      <!-- ============================================================ feed -->
-      <section class="block" aria-labelledby="feed-h">
+      <!-- ============================================================ home (bento) -->
+      <section class="block" aria-labelledby="home-h">
         <div class="block-head">
-          <h2 id="feed-h">Home feed</h2>
-          <p>The densest screen sets the rhythm. Two-line rows are 56px, one-line rows 36px.</p>
+          <h2 id="home-h">Home</h2>
+          <p>Nothing is left blank. The centre holds the question; the sides carry library and evidence at equal weight.</p>
         </div>
 
-        <div class="app-frame">
-          <aside class="f-rail">
-            <p class="f-brand">RAG Flow</p>
-            <nav class="f-nav" aria-label="Sections">
-              <a class="f-nav-item is-current" href="#feed-h">Home</a>
-              <a class="f-nav-item" href="#feed-h">Library <span class="count">128</span></a>
-              <a class="f-nav-item" href="#feed-h">Conversations <span class="count">34</span></a>
-              <a class="f-nav-item" href="#feed-h">Search passages</a>
+        <div class="frame">
+          <aside class="col-side rail">
+            <div class="brand brand-sm"><span class="mark" aria-hidden="true">1</span><span class="brand-name">RAG Flow</span></div>
+            <nav class="nav" aria-label="Sections">
+              <a class="nav-item is-current" href="#home-h"><span>Home</span></a>
+              <a class="nav-item" href="#home-h"><span>Library</span><span class="count">128</span></a>
+              <a class="nav-item" href="#home-h"><span>Conversations</span><span class="count">34</span></a>
+              <a class="nav-item" href="#home-h"><span>Search passages</span></a>
             </nav>
-            <p class="f-rail-label">Pinned</p>
-            <ul class="f-pins">
-              <li><span class="dot" aria-hidden="true"></span>Data retention policy</li>
-              <li><span class="dot" aria-hidden="true"></span>Q3 vendor contracts</li>
-              <li><span class="dot" aria-hidden="true"></span>Security handbook</li>
-            </ul>
+            <div class="rail-group">
+              <p class="group-label">Pinned</p>
+              <a class="pin" href="#home-h"><span class="pin-dot"></span>Data retention policy</a>
+              <a class="pin" href="#home-h"><span class="pin-dot"></span>Q3 vendor contracts</a>
+              <a class="pin" href="#home-h"><span class="pin-dot"></span>Security handbook</a>
+            </div>
+            <div class="rail-group">
+              <p class="group-label">Recently added</p>
+              <a class="file-row" href="#home-h"><span class="ext">PDF</span><span class="fname">vendor-msa-2026.pdf</span><span class="count">48</span></a>
+              <a class="file-row" href="#home-h"><span class="ext">DOC</span><span class="fname">security-handbook-v4.docx</span><span class="count">112</span></a>
+              <a class="file-row" href="#home-h"><span class="ext">CSV</span><span class="fname">incident-log-2026.csv</span><span class="count">9</span></a>
+            </div>
+            <div class="system-card">
+              <p class="group-label">Connected</p>
+              <dl>
+                <div><dt>Chat</dt><dd>space-bunny-alpha</dd></div>
+                <div><dt>Embeddings</dt><dd>qwen3-embedding-8b</dd></div>
+                <div><dt>Store</dt><dd>pgvector</dd></div>
+              </dl>
+              <p class="health"><span class="ok-dot"></span>All systems up</p>
+            </div>
           </aside>
 
-          <div class="f-main">
-            <div class="f-bar">
-              <h3>Recent activity</h3>
-              <div class="f-filters" role="tablist" aria-label="Filter">
-                <button role="tab" aria-selected="true">All</button>
-                <button role="tab" aria-selected="false">Answers</button>
-                <button role="tab" aria-selected="false">Files</button>
+          <div class="col-main bento">
+            <article class="tile-card hero-card">
+              <p class="greeting">Good morning, Siba</p>
+              <h3 class="hero-q">What do you want to verify today?</h3>
+              <form class="ask" onsubmit="return false">
+                <label class="sr-only" for="home-q">Your question</label>
+                <input id="home-q" placeholder="Ask about 3 selected files" />
+                <button class="btn btn-primary btn-lg" type="submit">Ask</button>
+              </form>
+              <div class="suggest" aria-label="Suggested questions">
+                <button type="button">Which vendors can process EU data?</button>
+                <button type="button">What changed in the Q3 MSA?</button>
+                <button type="button">Summarise the incident log</button>
               </div>
-            </div>
+            </article>
 
-            <ol class="feed">
-              <li class="row row-2 is-selected">
-                <span class="kind">Answer</span>
-                <div class="row-body">
-                  <p class="row-title">How long are customer records kept after closure?</p>
-                  <p class="row-meta">Seven years, deletion within 30 days <span class="cite-chip">1</span> <span class="cite-chip">2</span></p>
-                </div>
-                <time class="row-time">09:41</time>
-              </li>
-              <li class="row row-2">
-                <span class="kind">File</span>
-                <div class="row-body">
-                  <p class="row-title">vendor-msa-2026.pdf</p>
-                  <p class="row-meta">48 passages, added by you</p>
-                </div>
-                <time class="row-time">09:12</time>
-              </li>
-              <li class="row row-2">
-                <span class="kind">Answer</span>
-                <div class="row-body">
-                  <p class="row-title">Which vendors can process EU personal data?</p>
-                  <p class="row-meta">Three vendors, two with SCCs on file <span class="cite-chip">1</span></p>
-                </div>
-                <time class="row-time">Yesterday</time>
-              </li>
-              <li class="row row-1">
-                <span class="kind">File</span>
-                <div class="row-body"><p class="row-title">security-handbook-v4.docx</p></div>
-                <time class="row-time">Mon</time>
-              </li>
-              <li class="row row-1">
-                <span class="kind">File</span>
-                <div class="row-body"><p class="row-title">incident-log-2026.csv</p></div>
-                <time class="row-time">Mon</time>
-              </li>
-              <li class="row row-2">
-                <span class="kind">Answer</span>
-                <div class="row-body">
-                  <p class="row-title">What is the backup rotation and where are copies stored?</p>
-                  <p class="row-meta">35-day rotation, encrypted, second region <span class="cite-chip">1</span></p>
-                </div>
-                <time class="row-time">Sun</time>
-              </li>
-            </ol>
+            <article class="tile-card stat-card">
+              <p class="card-label">Library</p>
+              <p class="big-num">128 <span>files</span></p>
+              <p class="sub-num">9,412 passages searchable</p>
+              <div class="type-bar" role="img" aria-label="PDF 52%, Word 21%, Spreadsheets 15%, Other 12%">
+                <span style="flex: 52"></span><span style="flex: 21"></span><span style="flex: 15"></span><span style="flex: 12"></span>
+              </div>
+              <ul class="legend">
+                <li><i></i>PDF 52%</li><li><i></i>Word 21%</li><li><i></i>Sheets 15%</li><li><i></i>Other 12%</li>
+              </ul>
+            </article>
+
+            <article class="tile-card stat-card">
+              <p class="card-label">This week</p>
+              <p class="big-num">47 <span>answers</span></p>
+              <p class="sub-num">212 citations, 96% from 2+ sources</p>
+              <div class="spark" role="img" aria-label="Answers per day: 4, 7, 5, 9, 8, 6, 8">
+                <span style="--h: 44%"></span><span style="--h: 78%"></span><span style="--h: 56%"></span><span style="--h: 100%"></span><span style="--h: 89%"></span><span style="--h: 67%"></span><span style="--h: 89%" class="today"></span>
+              </div>
+              <ul class="legend days"><li>M</li><li>T</li><li>W</li><li>T</li><li>F</li><li>S</li><li>S</li></ul>
+            </article>
+
+            <article class="tile-card list-card">
+              <div class="card-head"><p class="card-label">Recent answers</p><a href="#home-h" class="text-link">All 34</a></div>
+              <ol class="feed">
+                <li class="row is-selected">
+                  <div><p class="row-title">How long are customer records kept after closure?</p><p class="row-meta">Seven years, deletion within 30 days <span class="cite-chip">1</span><span class="cite-chip">2</span></p></div>
+                  <time>09:41</time>
+                </li>
+                <li class="row">
+                  <div><p class="row-title">Which vendors can process EU personal data?</p><p class="row-meta">Three vendors, two with SCCs on file <span class="cite-chip">1</span></p></div>
+                  <time>Yesterday</time>
+                </li>
+                <li class="row">
+                  <div><p class="row-title">What is the backup rotation and where are copies stored?</p><p class="row-meta">35-day rotation, encrypted, second region <span class="cite-chip">1</span></p></div>
+                  <time>Sun</time>
+                </li>
+              </ol>
+            </article>
           </div>
 
-          <aside class="f-margin" aria-label="Sources for the selected answer">
-            <p class="f-margin-head">Sources</p>
-            <article class="note is-lit">
-              <span class="note-n">1</span>
-              <div>
-                <p class="note-src">policy.md <span>page 1</span></p>
-                <p class="note-text"><mark>Customer records are retained for seven years after account closure, in line with financial regulations.</mark></p>
-              </div>
+          <aside class="col-side evidence" aria-label="Latest evidence">
+            <div class="ev-head"><p class="card-label">Latest evidence</p><span class="hint">for the 09:41 answer</span></div>
+            <article class="ev is-lit">
+              <span class="ev-n">01</span>
+              <p class="ev-src">policy.md <span>page 1</span></p>
+              <p class="ev-text"><mark>Customer records are retained for seven years after account closure, in line with financial regulations.</mark></p>
             </article>
-            <article class="note">
-              <span class="note-n">2</span>
-              <div>
-                <p class="note-src">policy.md <span>page 1</span></p>
-                <p class="note-text"><mark>Deletion requests are honoured within 30 days unless a legal hold applies.</mark></p>
-              </div>
+            <article class="ev">
+              <span class="ev-n">02</span>
+              <p class="ev-src">policy.md <span>page 1</span></p>
+              <p class="ev-text"><mark>Deletion requests are honoured within 30 days unless a legal hold applies.</mark></p>
             </article>
+            <article class="ev">
+              <span class="ev-n">03</span>
+              <p class="ev-src">security-handbook-v4.docx <span>page 14</span></p>
+              <p class="ev-text"><mark>Audit logs are retained for ten years and are exempt from deletion requests.</mark></p>
+            </article>
+            <div class="coverage">
+              <div class="cov-head"><span>Claims cited</span><b>3 of 3</b></div>
+              <div class="cov-bar"><span style="width: 100%"></span></div>
+              <p class="hint">Every sentence in the answer points to a passage.</p>
+            </div>
+            <div class="drop">
+              <p><strong>Add files</strong></p>
+              <p class="hint">PDF, Word, Excel, PowerPoint, Markdown, CSV, code</p>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ============================================================ answer -->
+      <section class="block" aria-labelledby="conv-h">
+        <div class="block-head">
+          <h2 id="conv-h">Answer</h2>
+          <p>Question, answer and composer share one centred measure. Evidence numerals sit level with the answer they support.</p>
+        </div>
+        <div class="frame frame-short">
+          <aside class="col-side rail">
+            <p class="group-label">Conversations</p>
+            <a class="pin is-current" href="#conv-h">Customer record retention</a>
+            <a class="pin" href="#conv-h">EU data processors</a>
+            <a class="pin" href="#conv-h">Backup rotation</a>
+            <div class="rail-group spaced">
+              <p class="group-label">In scope</p>
+              <label class="scope-row is-on"><input type="checkbox" checked /><span class="fname">policy.md</span><span class="count">2</span></label>
+              <label class="scope-row is-on"><input type="checkbox" checked /><span class="fname">security-handbook-v4.docx</span><span class="count">112</span></label>
+              <label class="scope-row"><input type="checkbox" /><span class="fname">vendor-msa-2026.pdf</span><span class="count">48</span></label>
+            </div>
+            <div class="system-card">
+              <p class="group-label">This thread</p>
+              <dl>
+                <div><dt>Questions</dt><dd>2</dd></div>
+                <div><dt>Passages read</dt><dd>14</dd></div>
+                <div><dt>Started</dt><dd>Today, 09:38</dd></div>
+              </dl>
+            </div>
+          </aside>
+          <div class="col-main convo">
+            <p class="q">How long are customer records kept, and are audit logs affected by deletion requests?</p>
+            <div class="a">
+              <p>Customer records are kept for <strong>seven years</strong> after the account <span class="nw">closes&nbsp;<span class="cite-chip is-lit">1</span>.</span> Deletion requests are honoured within <strong>30 days</strong> unless a legal hold <span class="nw">applies&nbsp;<span class="cite-chip">2</span>.</span></p>
+              <p>Security audit logs are <strong>exempt</strong> from deletion requests and are kept for ten <span class="nw">years&nbsp;<span class="cite-chip">3</span>.</span></p>
+            </div>
+            <form class="ask ask-docked" onsubmit="return false">
+              <label class="sr-only" for="conv-q">Follow-up</label>
+              <input id="conv-q" placeholder="Ask a follow-up" />
+              <button class="btn btn-primary btn-lg" type="submit">Ask</button>
+            </form>
+          </div>
+          <aside class="col-side evidence" aria-label="Sources">
+            <div class="ev-head"><p class="card-label">Sources</p><span class="hint">3 passages</span></div>
+            <article class="ev is-lit"><span class="ev-n">01</span><p class="ev-src">policy.md <span>page 1</span></p><p class="ev-text"><mark>Retained for seven years after account closure.</mark></p></article>
+            <article class="ev"><span class="ev-n">02</span><p class="ev-src">policy.md <span>page 1</span></p><p class="ev-text"><mark>Honoured within 30 days unless a legal hold applies.</mark></p></article>
+            <article class="ev"><span class="ev-n">03</span><p class="ev-src">policy.md <span>page 2</span></p><p class="ev-text"><mark>Audit logs are exempt and kept for ten years.</mark></p></article>
           </aside>
         </div>
       </section>
@@ -141,55 +220,35 @@
       <section class="block" aria-labelledby="color-h">
         <div class="block-head">
           <h2 id="color-h">Colour</h2>
-          <p>Neutrals do the work. Gold appears only where there is evidence or a selection. Ratios are measured live against the page background.</p>
+          <p>Five neutrals, five roles. Gold is the only hue, and it only ever means evidence or selection. Ratios are measured live.</p>
         </div>
         <div class="swatches" id="swatches"></div>
       </section>
 
-      <!-- ============================================================ type -->
+      <!-- ============================================================ type + rhythm -->
       <section class="block" aria-labelledby="type-h">
         <div class="block-head">
-          <h2 id="type-h">Type</h2>
-          <p>Schibsted Grotesk for interface, tracked tight at display sizes. Literata only for reading answers and passages. Line heights are multiples of 4.</p>
+          <h2 id="type-h">Type and rhythm</h2>
+          <p>Grotesk at 800 for display, tracked tight. Literata only where people read. Every line height is a multiple of 4.</p>
         </div>
-        <div class="type-scale">
-          <div class="type-row"><span class="type-spec">48/48, 700, −3.5%</span><p class="t-48">Every claim, cited.</p></div>
-          <div class="type-row"><span class="type-spec">32/36, 700, −3.5%</span><p class="t-32">Ask your documents</p></div>
-          <div class="type-row"><span class="type-spec">24/28, 600, −2%</span><p class="t-24">Recent activity</p></div>
-          <div class="type-row"><span class="type-spec">20/24, 600, −2%</span><p class="t-20">Vendor contracts, Q3</p></div>
-          <div class="type-row"><span class="type-spec">16/24, 400</span><p class="t-16">Upload a PDF, Word file or spreadsheet. Passages become searchable in seconds.</p></div>
-          <div class="type-row"><span class="type-spec">14/20, 500</span><p class="t-14">How long are customer records kept after closure?</p></div>
-          <div class="type-row"><span class="type-spec">13/20, 400</span><p class="t-13">48 passages, added by you</p></div>
-          <div class="type-row"><span class="type-spec">12/16, 500, +1%</span><p class="t-12">Yesterday</p></div>
-          <div class="type-row read"><span class="type-spec">Literata 17/28</span>
-            <p class="t-read">Customer records are kept for seven years after the account closes <span class="cite-chip">1</span>. Deletion requests are honoured within 30 days unless a legal hold applies <span class="cite-chip is-lit">2</span>.</p>
+        <div class="halves">
+          <div class="panel">
+            <p class="panel-label">Display and interface</p>
+            <p class="t-64">Every claim, cited.</p>
+            <p class="t-32">Ask your documents</p>
+            <p class="t-20">Recent answers</p>
+            <p class="t-14">How long are customer records kept after closure?</p>
+            <p class="t-12">Yesterday, 128 files</p>
+            <ul class="specs">
+              <li><b>64/64</b> 800, −4%</li><li><b>32/36</b> 700, −3%</li><li><b>20/24</b> 600, −2%</li><li><b>14/20</b> 500</li><li><b>12/16</b> 500</li>
+            </ul>
           </div>
-        </div>
-      </section>
-
-      <!-- ============================================================ space -->
-      <section class="block" aria-labelledby="space-h">
-        <div class="block-head">
-          <h2 id="space-h">Space, radius, rhythm</h2>
-          <p>A 4px base. Radius grows with the size of the thing it rounds, so chips, controls and panels read as different layers.</p>
-        </div>
-        <div class="space-grid">
-          <div class="space-scale" id="space-scale"></div>
-          <div class="space-side">
-          <div class="radius-set">
-            <div class="radius" style="border-radius: var(--r-chip)"><span>2px</span><small>Chips</small></div>
-            <div class="radius" style="border-radius: var(--r-control)"><span>6px</span><small>Controls</small></div>
-            <div class="radius" style="border-radius: var(--r-panel)"><span>10px</span><small>Panels</small></div>
-          </div>
-          <figure class="anatomy">
-            <div class="anatomy-row">
-              <div class="a-pad">8</div>
-              <div class="a-line a-title">Title line, 14/20</div>
-              <div class="a-line a-meta">Meta line, 13/16 in rows</div>
-              <div class="a-pad a-pad-b">12</div>
-            </div>
-            <figcaption>Two-line feed row: 8 + 20 + 16 + 12 = 56px. Every other block snaps to the same 4px grid.</figcaption>
-          </figure>
+          <div class="panel">
+            <p class="panel-label">Reading</p>
+            <p class="t-read">Customer records are kept for seven years after the account <span class="nw">closes&nbsp;<span class="cite-chip is-lit">1</span>.</span> Deletion requests are honoured within 30 days unless a legal hold <span class="nw">applies&nbsp;<span class="cite-chip">2</span>.</span></p>
+            <ul class="specs"><li><b>Literata 17/28</b> answers</li><li><b>Literata 14/24</b> passages</li></ul>
+            <p class="panel-label spaced">Spacing, 4px base</p>
+            <div class="space-scale" id="space-scale"></div>
           </div>
         </div>
       </section>
@@ -198,45 +257,46 @@
       <section class="block" aria-labelledby="comp-h">
         <div class="block-head">
           <h2 id="comp-h">Components</h2>
-          <p>Primary actions are ink on paper, never gold. Gold stays reserved for evidence.</p>
+          <p>Ink for actions, gold for evidence. Radius grows with the layer: chip 2, control 8, tile 16.</p>
         </div>
-        <div class="components">
-          <div class="comp">
-            <p class="comp-label">Buttons</p>
+        <div class="quad">
+          <div class="panel">
+            <p class="panel-label">Actions</p>
             <div class="comp-row">
               <button class="btn btn-primary" type="button">Ask</button>
               <button class="btn btn-secondary" type="button">Add files</button>
               <button class="btn btn-ghost" type="button">Read whole file</button>
               <button class="btn btn-danger" type="button">Delete</button>
-              <button class="btn btn-primary" type="button" disabled>Asking</button>
             </div>
           </div>
-          <div class="comp">
-            <p class="comp-label">Composer</p>
-            <form class="composer" onsubmit="return false">
-              <label class="sr-only" for="demo-q">Your question</label>
-              <input id="demo-q" placeholder="Ask about the selected files" />
-              <button class="btn btn-primary btn-lg" type="submit">Ask</button>
-            </form>
+          <div class="panel">
+            <p class="panel-label">Citations</p>
+            <div class="comp-row cites">
+              <span class="cite-chip">1</span><span>Resting</span>
+              <span class="cite-chip is-lit">2</span><span>Hovered</span>
+              <span class="cite-chip is-missing">3</span><span>No source</span>
+            </div>
           </div>
-          <div class="comp">
-            <p class="comp-label">Library rows</p>
+          <div class="panel">
+            <p class="panel-label">Library rows</p>
             <ul class="lib">
-              <li><input type="checkbox" id="l1" checked /><label for="l1">policy.md</label><span>2 passages</span></li>
-              <li><input type="checkbox" id="l2" /><label for="l2">vendor-msa-2026.pdf</label><span>48 passages</span></li>
-              <li class="is-pending"><span class="spinner" aria-hidden="true"></span><span class="lib-name">board-minutes.pdf</span><span>Reading</span></li>
+              <li class="is-on"><input type="checkbox" checked id="c1" /><label for="c1">policy.md</label><span>2 passages</span></li>
+              <li><input type="checkbox" id="c2" /><label for="c2">vendor-msa-2026.pdf</label><span>48 passages</span></li>
             </ul>
           </div>
-          <div class="comp">
-            <p class="comp-label">Status</p>
-            <p class="status-line ok">Added 2 files.</p>
-            <p class="status-line err">The server needs an access token. Add one in connection settings.</p>
+          <div class="panel">
+            <p class="panel-label">Status</p>
+            <p class="status ok"><span class="ok-dot"></span>Added 2 files</p>
+            <p class="status err"><span class="err-dot"></span>The server needs an access token. Add one in settings.</p>
           </div>
         </div>
       </section>
     </main>
 
     <div class="baseline-overlay" aria-hidden="true"></div>
+    <div class="grid-overlay" aria-hidden="true"><div>
+      <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+    </div></div>
     <script type="module" src="/src/design.ts"></script>
   </body>
 </html>

@@ -6,14 +6,17 @@ type ThemeChoice = "light" | "dark" | "system";
 const THEME_KEY = "ragflow.theme"; // shared with the app
 
 const SWATCHES: { token: string; name: string; role: string; against?: string }[] = [
+  // row 1: surfaces and quiet text
   { token: "--bg", name: "Background", role: "Page" },
-  { token: "--surface-2", name: "Surface 2", role: "Hover, current item" },
-  { token: "--text", name: "Text", role: "Primary text" },
-  { token: "--text-2", name: "Text 2", role: "Body, secondary" },
-  { token: "--text-3", name: "Text 3", role: "Meta, captions" },
+  { token: "--surface", name: "Surface", role: "Cards, panels" },
+  { token: "--surface-2", name: "Surface 2", role: "Rail, hover, selected" },
   { token: "--line-strong", name: "Line", role: "Borders, controls" },
-  { token: "--accent", name: "Accent", role: "Accent marks and text" },
-  { token: "--highlight", name: "Highlight", role: "Evidence, selection", against: "--on-highlight" },
+  { token: "--text-3", name: "Text 3", role: "Meta, captions" },
+  // row 2: ink and the one accent
+  { token: "--text-2", name: "Text 2", role: "Body, secondary" },
+  { token: "--text", name: "Text", role: "Primary, ink buttons" },
+  { token: "--accent", name: "Gold text", role: "Lit numerals" },
+  { token: "--highlight", name: "Gold", role: "Evidence, selection", against: "--on-highlight" },
   { token: "--danger", name: "Danger", role: "Errors only" },
 ];
 
@@ -87,7 +90,7 @@ function renderSwatches(): void {
     const fg = s.against ? css.getPropertyValue(s.against).trim() : value;
     const base = s.against ? value : bg;
     const ratio = contrast(fg, base);
-    const isSurface = s.token === "--bg" || s.token === "--surface-2";
+    const isSurface = ["--bg", "--surface", "--surface-2", "--line-strong"].includes(s.token);
     const card = document.createElement("div");
     card.className = "swatch";
     const chip = document.createElement("div");
@@ -108,7 +111,7 @@ function renderSwatches(): void {
     const r = document.createElement("p");
     r.className = "ratio";
     if (isSurface) {
-      r.textContent = "Surface";
+      r.textContent = s.token === "--line-strong" ? "Non-text" : "Surface";
     } else {
       const strong = document.createElement("b");
       strong.textContent = `${ratio.toFixed(2)}:1`;
@@ -139,6 +142,8 @@ function renderSpace(): void {
 for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-choice]")) {
   b.addEventListener("click", () => applyTheme((b.dataset.themeChoice as ThemeChoice) ?? "system"));
 }
+const grid = document.getElementById("grid-toggle") as HTMLInputElement | null;
+grid?.addEventListener("change", () => document.body.classList.toggle("show-grid", grid.checked));
 const baseline = document.getElementById("baseline-toggle") as HTMLInputElement | null;
 baseline?.addEventListener("change", () => document.body.classList.toggle("show-baseline", baseline.checked));
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderSwatches);
