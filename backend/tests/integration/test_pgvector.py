@@ -110,3 +110,13 @@ async def test_postgres_checkpointer_isolates_threads(pg_url: str) -> None:
         await graph.ainvoke(turn_input("b"), cfg_b, context=ctx)
         a = (await graph.aget_state(cfg_a)).values["messages"]
         assert [m.content for m in a] == ["a", "hi alice"]
+
+
+async def test_high_dimension_embeddings_skip_hnsw(pg_url: str) -> None:
+    """e.g. qwen3-embedding-8b (4096 dims) exceeds pgvector's 2000-dim index limit."""
+    emb = DeterministicFakeEmbedding(size=4096)
+    s = await PgVectorScopedStore.create(pg_url, emb, table=f"t_{uuid.uuid4().hex[:10]}")
+    await s.aadd_documents([_doc("f1", "alice", 0)])
+    hits = await s.asearch(await emb.aembed_query("x"), 1, ["f1"], ["alice"])
+    assert len(hits) == 1
+    await s.aclose()

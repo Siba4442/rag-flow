@@ -24,6 +24,8 @@ from ragflow.stores.base import FileSummary, unique
 logger = logging.getLogger(__name__)
 
 METADATA_COLUMNS = ("file_id", "user_id", "chunk_index", "ingestion_attempt_id")
+#: pgvector's HNSW / IVFFlat indexes support at most 2000 dimensions on ``vector``.
+MAX_INDEXED_DIMENSIONS = 2000
 
 
 class PgVectorScopedStore:
@@ -93,8 +95,19 @@ class PgVectorScopedStore:
             schema_name=schema,
             metadata_columns=list(METADATA_COLUMNS),
         )
-        if created:
+        if created and vector_size is not None and vector_size <= MAX_INDEXED_DIMENSIONS:
             await store.aapply_vector_index(HNSWIndex(name=f"{table}_hnsw_idx"))
+        elif created:
+            # Every search is pre-filtered by (user_id, file_id) via the btree index, so
+            # exact distance over the caller's own files stays fast without HNSW.
+            logger.warning(
+                "Embeddings have %s dimensions (> %d): skipping the HNSW index; searches "
+                "use exact distance within the selected files. Set EMBEDDINGS_DIMENSIONS "
+                "<= %d if your model supports it to enable the index.",
+                vector_size,
+                MAX_INDEXED_DIMENSIONS,
+                MAX_INDEXED_DIMENSIONS,
+            )
         return cls(engine, store, table, schema)
 
     # ------------------------------------------------------------------ writes
