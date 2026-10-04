@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>RAG Flow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div class="app" id="app">
+      <aside class="rail" id="rail" aria-label="Library">
+        <header class="rail-head">
+          <h1 class="wordmark">RAG Flow</h1>
+          <button class="icon-btn only-mobile" id="close-rail" type="button" aria-label="Close library">✕</button>
+        </header>
+
+        <section class="rail-section" aria-labelledby="lib-title">
+          <div class="section-head">
+            <h2 id="lib-title">Your files</h2>
+            <span class="hint" id="scope-hint"></span>
+          </div>
+          <label class="dropzone" id="dropzone">
+            <input type="file" id="file-input" multiple hidden />
+            <span>Drop files here or <u>browse</u></span>
+            <small>PDF, Word, Excel, PowerPoint, Markdown, CSV, code and plain text</small>
+          </label>
+          <ul class="file-list" id="file-list" aria-live="polite"></ul>
+        </section>
+
+        <section class="rail-section" aria-labelledby="threads-title">
+          <div class="section-head">
+            <h2 id="threads-title">Conversations</h2>
+            <button class="text-btn" id="new-thread" type="button">New</button>
+          </div>
+          <ul class="thread-list" id="thread-list"></ul>
+        </section>
+
+        <footer class="rail-foot">
+          <button class="text-btn" id="open-settings" type="button">Connection settings</button>
+        </footer>
+      </aside>
+
+      <main class="desk">
+        <nav class="desk-bar" aria-label="Mode">
+          <button class="icon-btn only-mobile" id="open-rail" type="button" aria-label="Open library">☰</button>
+          <div class="modes" role="tablist">
+            <button role="tab" class="mode" id="tab-chat" aria-selected="true" data-mode="chat">Ask</button>
+            <button role="tab" class="mode" id="tab-search" aria-selected="false" data-mode="search">Search passages</button>
+          </div>
+          <span class="status" id="status" role="status"></span>
+        </nav>
+
+        <section class="page" id="page"></section>
+
+        <form class="composer" id="composer" autocomplete="off">
+          <label class="sr-only" for="prompt">Your question</label>
+          <textarea id="prompt" rows="1" placeholder="Ask about the selected files"></textarea>
+          <button class="primary" id="send" type="submit">Ask</button>
+        </form>
+      </main>
+
+      <aside class="margin" id="margin" aria-label="Sources"></aside>
+    </div>
+
+    <dialog class="sheet" id="settings">
+      <form method="dialog" id="settings-form">
+        <h2>Connection settings</h2>
+        <p class="hint">Stored in this browser only.</p>
+        <label>API address
+          <input name="baseUrl" placeholder="/api" />
+        </label>
+        <label>Access token (JWT)
+          <input name="token" type="password" placeholder="Leave empty when auth is off" />
+        </label>
+        <label>Entity id
+          <input name="entityId" placeholder="Optional, e.g. an agent id" />
+        </label>
+        <div class="sheet-actions">
+          <button value="cancel" class="text-btn">Cancel</button>
+          <button value="save" class="primary">Save</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog class="sheet wide" id="reader">
+      <form method="dialog">
+        <header class="reader-head">
+          <h2 id="reader-title"></h2>
+          <button class="icon-btn" value="close" aria-label="Close">✕</button>
+        </header>
+        <article class="reader-body" id="reader-body"></article>
+      </form>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
