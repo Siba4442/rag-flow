@@ -5,10 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="color-scheme" content="light dark" />
     <title>RAG Flow</title>
+    <script>
+      // Apply the saved theme before first paint (no light flash in dark mode).
+      try {
+        const t = localStorage.getItem("ragflow.theme");
+        if (t === "light" || t === "dark") document.documentElement.dataset.theme = t;
+      } catch {}
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
   </head>
@@ -43,6 +50,11 @@
 
         <footer class="rail-foot">
           <button class="text-btn" id="open-settings" type="button">Connection settings</button>
+          <div class="segmented" role="radiogroup" aria-label="Theme">
+            <button type="button" role="radio" data-theme-choice="light">Light</button>
+            <button type="button" role="radio" data-theme-choice="dark">Dark</button>
+            <button type="button" role="radio" data-theme-choice="system">Auto</button>
+          </div>
         </footer>
       </aside>
 

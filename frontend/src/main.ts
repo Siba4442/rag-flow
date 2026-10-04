@@ -149,6 +149,35 @@ settingsDialog.addEventListener("close", () => {
   void boot();
 });
 
+// ------------------------------------------------------------------ theme
+type ThemeChoice = "light" | "dark" | "system";
+const THEME_KEY = "ragflow.theme";
+
+function applyTheme(choice: ThemeChoice): void {
+  if (choice === "system") delete document.documentElement.dataset.theme;
+  else document.documentElement.dataset.theme = choice;
+  for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-choice]")) {
+    b.setAttribute("aria-checked", String(b.dataset.themeChoice === choice));
+  }
+  try {
+    if (choice === "system") localStorage.removeItem(THEME_KEY);
+    else localStorage.setItem(THEME_KEY, choice);
+  } catch {
+    /* theme still applies for this visit */
+  }
+}
+
+for (const b of document.querySelectorAll<HTMLButtonElement>("[data-theme-choice]")) {
+  b.addEventListener("click", () => {
+    const c = b.dataset.themeChoice;
+    applyTheme(c === "light" || c === "dark" ? c : "system");
+  });
+}
+{
+  const saved = document.documentElement.dataset.theme;
+  applyTheme(saved === "light" || saved === "dark" ? saved : "system");
+}
+
 // ------------------------------------------------------------------ boot
 subscribe(() => {
   renderThreads();

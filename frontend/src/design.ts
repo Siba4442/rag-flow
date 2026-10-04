@@ -3,7 +3,7 @@
 import "./styles/design.css";
 
 type ThemeChoice = "light" | "dark" | "system";
-const THEME_KEY = "ragflow.design.theme";
+const THEME_KEY = "ragflow.theme"; // shared with the app
 
 const SWATCHES: { token: string; name: string; role: string; against?: string }[] = [
   { token: "--bg", name: "Background", role: "Page" },
