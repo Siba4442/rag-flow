@@ -67,6 +67,13 @@ mongo = [
 llamaparse = [
     "llama-cloud>=2.16.0",
 ]
+docling = [
+    "langchain-docling>=3.0.0",
+]
+huggingface = [
+    "langchain-huggingface>=1.2.2",
+    "sentence-transformers>=6.1.0",
+]
 
 [build-system]
 requires = ["uv_build>=0.12.21,<0.13.0"]
