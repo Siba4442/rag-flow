@@ -48,3 +48,16 @@ def test_threads_are_namespaced_per_user(auth_api: Api) -> None:
     auth_api.client.post("/chat", json={"message": "hi", "thread_id": "t1"}, headers=alice)
     assert auth_api.client.get("/chat/threads/t1", headers=bob).json()["messages"] == []
     assert len(auth_api.client.get("/chat/threads/t1", headers=alice).json()["messages"]) == 2
+
+
+def test_stream_errors_do_not_leak_internals(api: Api) -> None:
+    class Boom(ScriptedModel):
+        async def ainvoke(self, *_a: object, **_k: object) -> AIMessage:  # type: ignore[override]
+            raise RuntimeError("api key sk-secret rejected")
+
+    _enable_chat(api, [])
+    api.services.chat_model = Boom(messages=iter([]))
+    r = api.client.post("/chat", json={"message": "hi", "thread_id": "t9"})
+    events = _events(r.text)
+    assert events[-1][0] == "error"
+    assert "sk-secret" not in r.text

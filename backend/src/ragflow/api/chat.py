@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 from sse_starlette.sse import EventSourceResponse
 
 from ragflow.api.deps import Services, get_services
+from ragflow.api.documents import client_error
 from ragflow.graphs.chat import ChatContext, build_chat_graph, turn_input, visible_history
 from ragflow.scope import PUBLIC_OWNER, request_user, resolve_scope
 from ragflow.settings import Settings, VectorDBType
@@ -142,8 +143,8 @@ async def chat(body: ChatRequest, request: Request, services: ServicesDep) -> Ev
                             yield {"event": "sources", "data": json.dumps(sources, default=str)}
             yield {"event": "done", "data": json.dumps({"thread_id": body.thread_id})}
         except Exception as exc:
-            logger.exception("chat stream failed")
-            yield {"event": "error", "data": json.dumps({"detail": str(exc)})}
+            detail = client_error("The answer could not be generated", exc)
+            yield {"event": "error", "data": json.dumps({"detail": detail})}
 
     return EventSourceResponse(events())
 
