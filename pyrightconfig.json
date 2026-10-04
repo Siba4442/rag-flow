@@ -5,7 +5,8 @@
   "typeCheckingMode": "standard",
   "include": [
     "backend/src",
-    "backend/tests"
+    "backend/tests",
+    "backend/scripts"
   ],
   "exclude": [
     "rag-api",
@@ -16,6 +17,12 @@
   "executionEnvironments": [
     {
       "root": "backend/src"
+    },
+    {
+      "root": "backend/scripts",
+      "extraPaths": [
+        "backend/src"
+      ]
     },
     {
       "root": "backend/tests",

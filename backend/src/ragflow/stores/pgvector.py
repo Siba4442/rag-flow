@@ -42,14 +42,21 @@ class PgVectorScopedStore:
         *,
         table: str = "rag_chunks",
         schema: str = "public",
+        vector_size: int | None = None,
     ) -> PgVectorScopedStore:
+        """Open (creating if needed) the chunk table.
+
+        ``vector_size`` skips probing the embeddings provider for the dimension, e.g. when
+        migrating legacy rows whose vectors are copied rather than re-embedded.
+        """
         engine = create_async_engine(url, pool_pre_ping=True)
         # from_engine with no loop: run on the caller's (uvicorn's) event loop
         # instead of PGEngine's private background thread.
         pg_engine = PGEngine.from_engine(engine)
 
         if not await _table_exists(engine, schema, table):
-            vector_size = len(await embeddings.aembed_query("dimension probe"))
+            if vector_size is None:
+                vector_size = len(await embeddings.aembed_query("dimension probe"))
             logger.info("Creating %s.%s (vector(%d))", schema, table, vector_size)
             await pg_engine.ainit_vectorstore_table(
                 table_name=table,
