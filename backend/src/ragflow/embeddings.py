@@ -48,7 +48,7 @@ def init_embeddings(settings: Settings) -> Embeddings:
             return AzureOpenAIEmbeddings(**azure_kwargs)
 
         case EmbeddingsProvider.HUGGINGFACE:
-            from langchain_huggingface import (
+            from langchain_huggingface import (  # pyright: ignore[reportMissingImports]
                 HuggingFaceEmbeddings,
             )
 
@@ -58,7 +58,7 @@ def init_embeddings(settings: Settings) -> Embeddings:
             return hf
 
         case EmbeddingsProvider.HUGGINGFACETEI:
-            from langchain_huggingface import (
+            from langchain_huggingface import (  # pyright: ignore[reportMissingImports]
                 HuggingFaceEndpointEmbeddings,
             )
 

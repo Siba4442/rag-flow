@@ -51,8 +51,10 @@ def _llamaparse(filepath: str, settings: Settings) -> list[Document]:
 
 
 def _docling(filepath: str) -> list[Document]:
-    from langchain_docling import DoclingLoader
-    from langchain_docling.loader import ExportType
+    from langchain_docling import DoclingLoader  # pyright: ignore[reportMissingImports]
+    from langchain_docling.loader import (  # pyright: ignore[reportMissingImports]
+        ExportType,
+    )
 
     docs: list[Document] = DoclingLoader(
         file_path=filepath, export_type=ExportType.DOC_CHUNKS

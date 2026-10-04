@@ -48,8 +48,11 @@ class IngestInput(TypedDict):
     content_type: str | None
 
 
-class IngestState(IngestInput, total=False):
+class IngestRun(IngestInput):
     attempt_id: str
+
+
+class IngestState(IngestRun, total=False):
     known_type: bool
     file_ext: str
     pages: list[Document]
@@ -86,7 +89,7 @@ def _load_sync(state: IngestState, settings: Settings) -> dict[str, Any]:
 
 async def load(state: IngestState, runtime: Runtime[IngestContext]) -> dict[str, Any]:
     result = await asyncio.to_thread(_load_sync, state, runtime.context.settings)
-    return {**result, "attempt_id": uuid.uuid4().hex, "stored": 0, "errors": []}
+    return {**result, "stored": 0, "errors": []}
 
 
 def _split_sync(state: IngestState, settings: Settings) -> list[Document]:
@@ -157,10 +160,8 @@ async def finalize(state: IngestState, runtime: Runtime[IngestContext]) -> dict[
     return {"status": "stored" if state.get("chunks") else "empty", "chunks": []}
 
 
-def build_ingest_graph() -> CompiledStateGraph[
-    IngestState, IngestContext, IngestInput, IngestState
-]:
-    graph = StateGraph(IngestState, context_schema=IngestContext, input_schema=IngestInput)
+def build_ingest_graph() -> CompiledStateGraph[IngestState, IngestContext, IngestRun, IngestState]:
+    graph = StateGraph(IngestState, context_schema=IngestContext, input_schema=IngestRun)
     graph.add_node("load", load)
     graph.add_node("split", split)
     graph.add_node("store_batch", store_batch)
@@ -178,8 +179,9 @@ INGEST_GRAPH = build_ingest_graph()
 
 async def run_ingest(inputs: IngestInput, context: IngestContext) -> IngestState:
     """Run ingestion; ``PARALLEL_EXECUTION`` caps concurrent embedding batches."""
+    run: IngestRun = {**inputs, "attempt_id": uuid.uuid4().hex}
     result: IngestState = await INGEST_GRAPH.ainvoke(  # type: ignore[assignment]
-        inputs,
+        run,
         context=context,
         config={"max_concurrency": max(1, context.settings.parallel_execution)},
     )
