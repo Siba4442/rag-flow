@@ -72,12 +72,21 @@ class LoadedFile:
     known_type: bool
     file_ext: str
     temp_paths: list[str] = field(default_factory=list)
+    #: The caller's file when the loader reads a converted temp copy (e.g. re-encoded CSV).
+    original_path: str | None = None
 
     def load(self) -> list[Document]:
+        temps = set(self.temp_paths)  # cleanup() empties the list
         try:
-            return list(self.loader.lazy_load())
+            docs = list(self.loader.lazy_load())
         finally:
             self.cleanup()
+        if self.original_path:
+            # Never let an internal temp path become the cited source.
+            for doc in docs:
+                if doc.metadata.get("source") in temps:
+                    doc.metadata["source"] = self.original_path
+        return docs
 
     def cleanup(self) -> None:
         for path in self.temp_paths:
@@ -124,7 +133,7 @@ def _csv_loader(filepath: str) -> LoadedFile:
             tmp.close()
             os.unlink(tmp.name)
             raise
-    return LoadedFile(CSVLoader(tmp.name), True, "csv", [tmp.name])
+    return LoadedFile(CSVLoader(tmp.name), True, "csv", [tmp.name], original_path=filepath)
 
 
 class SafePyPDFLoader:

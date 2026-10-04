@@ -60,6 +60,7 @@ def test_non_utf8_csv_is_converted_and_cleaned_up(tmp_path: Path) -> None:
     docs = loaded.load()
     assert "Zürich" in docs[0].page_content
     assert not os.path.exists(temp)
+    assert docs[0].metadata["source"] == str(path)  # not the temp copy
 
 
 def test_clean_text_strips_nul_and_surrogates() -> None:
