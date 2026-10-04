@@ -1,0 +1,12 @@
+{
+  "venvPath": "backend",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "standard",
+  "include": ["backend/src", "backend/tests"],
+  "exclude": ["rag-api", "frontend", "**/node_modules", "**/.venv"],
+  "executionEnvironments": [
+    { "root": "backend/src" },
+    { "root": "backend/tests", "extraPaths": ["backend/src"] }
+  ]
+}
