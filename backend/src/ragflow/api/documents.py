@@ -10,8 +10,8 @@ Deliberate differences from rag-api, all bug fixes:
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
-import os
 import uuid
 from pathlib import Path
 from typing import Annotated, Any
@@ -41,8 +41,22 @@ PANDOC_NOT_INSTALLED = (
 )
 
 
+TMP_DIRNAME = "_tmp"  # private temp uploads; never reachable through /local/embed
+STORE_FAILED = "Failed to process/store the file data."
+
+
 def default_error(err: object = "") -> str:
     return f"Something went wrong :/\n{err or ''}"
+
+
+def client_error(message: str, exc: BaseException) -> str:
+    """Log the real exception; give the client a message plus a reference id only.
+
+    Exception text can carry DSNs, hostnames or file paths, so it never leaves the server.
+    """
+    ref = uuid.uuid4().hex[:12]
+    logger.error("%s [ref %s]", message, ref, exc_info=exc)
+    return f"{message} (ref {ref})"
 
 
 # ---------------------------------------------------------------------------- models
@@ -87,13 +101,36 @@ def validate_file_path(base_dir: Path, file_path: str) -> Path | None:
 
 
 def make_unique_temp_path(base_dir: Path, owner: str, filename: str | None) -> Path | None:
-    """``{upload_dir}/{owner}/{stem}_{uuid}{suffix}``, validated against traversal."""
-    if not filename:
+    """``{upload_dir}/_tmp/{hash(owner)}/{uuid}{suffix}``.
+
+    Neither the caller-supplied filename nor the owner id is used as a path component
+    (only a hash and a sanitised suffix), so neither can steer the write location.
+    """
+    name = Path(filename or "").name
+    if name in ("", ".", ".."):
         return None
-    checked = validate_file_path(base_dir, os.path.join(owner, filename))
-    if checked is None:
+    suffix = Path(name).suffix.lower()
+    if not suffix[1:].isalnum() or len(suffix) > 16:
+        suffix = ""
+    owner_dir = hashlib.sha256(owner.encode()).hexdigest()[:16]
+    return base_dir.resolve() / TMP_DIRNAME / owner_dir / f"{uuid.uuid4().hex}{suffix}"
+
+
+def local_embed_path(services: Services, owner: str, filepath: str) -> Path | None:
+    """Resolve a ``/local/embed`` path, or None if the caller may not read it.
+
+    Always confined to RAG_UPLOAD_DIR and never inside the private temp dir. With
+    ``LOCAL_EMBED_SCOPE=owner`` (default) it must also sit under ``{upload_dir}/{owner}/``.
+    """
+    base = services.settings.rag_upload_dir.resolve()
+    path = validate_file_path(base, filepath)
+    if path is None or path.is_relative_to(base / TMP_DIRNAME):
         return None
-    return checked.with_name(f"{checked.stem}_{uuid.uuid4().hex}{checked.suffix}")
+    if services.settings.local_embed_scope == "owner":
+        owner_dir = (base / owner).resolve()
+        if owner_dir.parent != base or not path.is_relative_to(owner_dir):
+            return None
+    return path
 
 
 async def save_upload(file: UploadFile, dest: Path) -> None:
@@ -128,10 +165,8 @@ async def ingest(
 
 
 def ingest_error(state: IngestState) -> str | None:
-    if state.get("status") == "rolled_back":
-        errors = state.get("errors") or ["Failed to process/store the file data."]
-        return errors[0]
-    return None
+    """Generic failure text; the batch exception itself is logged by the ingest graph."""
+    return STORE_FAILED if state.get("status") == "rolled_back" else None
 
 
 def order_documents(documents: list[Document]) -> list[Document]:
@@ -180,9 +215,9 @@ class FileSummaryResponse(BaseModel):
 async def health(services: ServicesDep) -> JSONResponse:
     try:
         healthy = await services.store.health()
-    except Exception as exc:
+    except Exception:
         logger.exception("Health check errored")
-        return JSONResponse({"status": "DOWN", "error": str(exc)}, status_code=503)
+        return JSONResponse({"status": "DOWN"}, status_code=503)
     if healthy:
         return JSONResponse({"status": "UP"})
     return JSONResponse({"status": "DOWN"}, status_code=503)
@@ -196,8 +231,9 @@ async def get_all_ids(
     try:
         return list(set(await services.store.get_all_ids(scope.owners)))
     except Exception as exc:
-        logger.exception("Failed to get all IDs")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500, detail=client_error("Failed to get all IDs", exc)
+        ) from exc
 
 
 @router.get("/files", response_model=list[FileSummaryResponse])
@@ -231,8 +267,9 @@ async def get_documents_by_ids(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("Error getting documents by IDs")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500, detail=client_error("Error getting documents by IDs", exc)
+        ) from exc
     return documents
 
 
@@ -253,8 +290,9 @@ async def delete_documents(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("Failed to delete documents")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500, detail=client_error("Failed to delete documents", exc)
+        ) from exc
     n = len(document_ids)
     return {"message": f"Documents for {n} file{'s' if n > 1 else ''} deleted successfully"}
 
@@ -269,8 +307,9 @@ async def query_embeddings_by_file_id(
             body.query, [body.file_id], list(scope.owners), body.k
         )
     except Exception as exc:
-        logger.exception("Error in query embeddings")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500, detail=client_error("Error in query embeddings", exc)
+        ) from exc
 
 
 @router.post("/query_multiple")
@@ -283,8 +322,9 @@ async def query_embeddings_by_file_ids(
             body.query, body.file_ids, list(scope.owners), body.k
         )
     except Exception as exc:
-        logger.exception("Error in query multiple embeddings")
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(
+            status_code=500, detail=client_error("Error in query multiple embeddings", exc)
+        ) from exc
     if not results:
         raise HTTPException(status_code=404, detail="No documents found for the given query")
     return results
@@ -295,8 +335,8 @@ async def embed_local_file(
     document: StoreDocument, request: Request, services: ServicesDep, entity_id: str | None = None
 ) -> dict[str, Any]:
     owner = resolve_write_owner(request, entity_id)
-    path = validate_file_path(services.settings.rag_upload_dir, document.filepath)
-    if path is None or not path.exists():
+    path = local_embed_path(services, owner, document.filepath)
+    if path is None or not path.is_file():
         raise HTTPException(status_code=404, detail=FILE_NOT_FOUND)
     try:
         state = await ingest(
@@ -308,8 +348,10 @@ async def embed_local_file(
             ctype=document.file_content_type,
         )
     except Exception as exc:
-        logger.exception("local/embed failed")
-        detail = PANDOC_NOT_INSTALLED if "No pandoc was found" in str(exc) else default_error(exc)
+        if "No pandoc was found" in str(exc):
+            detail = PANDOC_NOT_INSTALLED
+        else:
+            detail = default_error(client_error("Error during file processing", exc))
         raise HTTPException(status_code=400, detail=detail) from exc
     error = ingest_error(state)
     response: dict[str, Any] = {
@@ -349,8 +391,8 @@ async def _embed_upload(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("embed failed for file %s", file_id)
-        raise HTTPException(status_code=400, detail=f"Error during file processing: {exc}") from exc
+        detail = client_error("Error during file processing", exc)
+        raise HTTPException(status_code=400, detail=detail) from exc
     finally:
         await remove_quietly(path)
 
@@ -404,8 +446,8 @@ async def load_document_context(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("Error loading document context")
-        raise HTTPException(status_code=400, detail=default_error(exc)) from exc
+        detail = default_error(client_error("Error loading document context", exc))
+        raise HTTPException(status_code=400, detail=detail) from exc
 
 
 @router.post("/text")
@@ -437,8 +479,8 @@ async def extract_text(
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("text extraction failed")
-        raise HTTPException(status_code=400, detail=f"Error during text extraction: {exc}") from exc
+        detail = client_error("Error during text extraction", exc)
+        raise HTTPException(status_code=400, detail=detail) from exc
     finally:
         await remove_quietly(path)
     return {"text": text, "file_id": file_id, "filename": filename, "known_type": loaded.known_type}

@@ -11,7 +11,7 @@ import urllib.parse
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Literal
 
 from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
@@ -71,6 +71,8 @@ class Settings(BaseSettings):
     rag_host: str = "0.0.0.0"
     rag_port: int = 8000
     rag_upload_dir: Path = Path("./uploads/")
+    #: /local/embed access: "owner" = only {upload_dir}/{owner}/..., "any" = rag-api behaviour
+    local_embed_scope: Literal["owner", "any"] = "owner"
     rag_thread_pool_size: int | None = None
     debug_rag_api: bool = False
     console_json: bool = False

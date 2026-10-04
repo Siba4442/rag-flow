@@ -136,14 +136,15 @@ def test_local_embed_path_traversal(api: Api) -> None:
 
 def test_local_embed_reports_store_failure(api: Api, monkeypatch) -> None:
     upload_dir: Path = api.services.settings.rag_upload_dir
-    (upload_dir / "doc.txt").write_text(TEXT)
+    (upload_dir / "public").mkdir()
+    (upload_dir / "public" / "doc.txt").write_text(TEXT)
 
     async def boom(_docs: object) -> list[str]:
         raise RuntimeError("db down")
 
     monkeypatch.setattr(api.services.store, "aadd_documents", boom)
     body = {
-        "filepath": "doc.txt",
+        "filepath": "public/doc.txt",
         "filename": "doc.txt",
         "file_content_type": "text/plain",
         "file_id": "x",
@@ -151,7 +152,8 @@ def test_local_embed_reports_store_failure(api: Api, monkeypatch) -> None:
     r = api.client.post("/local/embed", json=body)
     assert r.status_code == 200
     assert r.json()["status"] is False
-    assert "db down" in r.json()["message"]
+    assert r.json()["message"] == "Failed to process/store the file data."
+    assert "db down" not in r.text  # internals stay in the server log
 
 
 def test_validation_error_shape(api: Api) -> None:
@@ -185,3 +187,51 @@ def test_entity_upload_is_visible_with_entity(auth_api: Api) -> None:
     assert auth_api.client.get("/ids", params={"entity_id": "agent1"}, headers=alice).json() == [
         "f1"
     ]
+
+
+def test_files_lists_original_filename(api: Api) -> None:
+    _upload(api)
+    assert api.client.get("/files").json()[0]["filename"] == "notes.txt"
+
+
+def test_upload_filename_cannot_traverse(api: Api) -> None:
+    r = api.client.post(
+        "/embed",
+        data={"file_id": "f9"},
+        files={"file": ("../../outside/evil.txt", TEXT.encode(), "text/plain")},
+    )
+    assert r.status_code == 200
+    base = api.services.settings.rag_upload_dir
+    assert not (base.parent / "outside").exists()
+
+
+def test_local_embed_is_confined_to_own_folder(auth_api: Api) -> None:
+    base: Path = auth_api.services.settings.rag_upload_dir
+    for owner in ("alice", "bob"):
+        (base / owner).mkdir()
+        (base / owner / "doc.txt").write_text(TEXT)
+    alice = auth_api.token("alice")
+
+    def local(path: str) -> int:
+        body = {
+            "filepath": path,
+            "filename": "doc.txt",
+            "file_content_type": "text/plain",
+            "file_id": "loc",
+        }
+        return auth_api.client.post("/local/embed", json=body, headers=alice).status_code
+
+    assert local("alice/doc.txt") == 200
+    assert local("bob/doc.txt") == 404
+    assert local("_tmp/anything") == 404
+
+
+def test_internal_errors_are_not_leaked(api: Api, monkeypatch) -> None:
+    async def boom(_owners: object) -> list[str]:
+        raise RuntimeError("postgresql://user:secret@db/x unreachable")
+
+    monkeypatch.setattr(api.services.store, "get_all_ids", boom)
+    r = api.client.get("/ids")
+    assert r.status_code == 500
+    assert "secret" not in r.text
+    assert "(ref " in r.json()["detail"]

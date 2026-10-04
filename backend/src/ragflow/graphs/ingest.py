@@ -105,8 +105,12 @@ def _split_sync(state: IngestState, settings: Settings) -> list[Document]:
         content = clean_text(piece.page_content) if is_pdf else piece.page_content
         if not content.strip():
             continue
+        loader_meta = dict(piece.metadata or {})
+        if loader_meta.get("source") == state["filepath"]:
+            # Uploads live under random temp names; cite the user's filename instead.
+            loader_meta["source"] = state["filename"]
         metadata = {
-            **(piece.metadata or {}),
+            **loader_meta,
             # Ours last: a loader can never overwrite the owner or file id.
             "file_id": state["file_id"],
             "user_id": state["owner"],
