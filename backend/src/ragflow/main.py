@@ -90,6 +90,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         async def root() -> RedirectResponse:
             return RedirectResponse("/ui/")
 
+        @app.get("/design", include_in_schema=False)
+        async def design() -> RedirectResponse:
+            return RedirectResponse("/ui/design/")
+
     return app
 
 

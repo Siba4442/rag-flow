@@ -28,7 +28,7 @@ def _is_exempt(request: Request) -> bool:
     if request.method == "OPTIONS" or path in EXEMPT_PATHS:
         return True
     # The bundled frontend's static files are public; its API calls are not.
-    return get_settings().serve_frontend and (path == "/" or path.startswith("/ui"))
+    return get_settings().serve_frontend and (path in ("/", "/design") or path.startswith("/ui"))
 
 
 async def security_middleware(request: Request, call_next: CallNext) -> Response:
