@@ -1,4 +1,21 @@
 services:
+  app:
+    build:
+      context: .
+      args:
+        EXTRAS: ${RAGFLOW_EXTRAS:-openai anthropic ollama}
+    env_file: .env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: pgvector/pgvector:pg17
     environment:
@@ -29,5 +46,6 @@ services:
       - "127.0.0.1:27018:27017"
 
 volumes:
+  uploads:
   pgdata:
   chromadata:
