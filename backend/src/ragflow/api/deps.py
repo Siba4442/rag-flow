@@ -19,8 +19,10 @@ class Services:
     embeddings: Embeddings
     store: ScopedVectorStore
     retriever: Retriever
-    #: Compiled chat graph (None until the chat model is configured).
+    #: Compiled chat graph; None when CHAT_MODEL can't be initialised.
     chat_graph: Any = None
+    chat_model: Any = None
+    grader_model: Any = None
 
 
 def get_services(request: Request) -> Services:

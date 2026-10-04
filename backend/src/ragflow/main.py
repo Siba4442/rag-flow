@@ -12,7 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from ragflow.api import documents
+from ragflow.api import chat, documents
 from ragflow.api.deps import Services
 from ragflow.auth import security_middleware
 from ragflow.embeddings import init_embeddings
@@ -35,7 +35,9 @@ async def build_services(settings: Settings, stack: AsyncExitStack) -> Services:
             distance_threshold=settings.rag_distance_threshold,
         )
     )
-    return Services(settings, embeddings, store, retriever)
+    services = Services(settings, embeddings, store, retriever)
+    services.chat_graph = await chat.build_chat_runtime(settings, services, stack)
+    return services
 
 
 @asynccontextmanager
@@ -45,9 +47,10 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     async with AsyncExitStack() as stack:
         app.state.services = await build_services(settings, stack)
         logger.info(
-            "ragflow ready: store=%s embeddings=%s",
+            "ragflow ready: store=%s embeddings=%s chat=%s",
             settings.vector_db_type,
             settings.embeddings_provider,
+            settings.chat_model if app.state.services.chat_graph else "disabled",
         )
         yield
 
@@ -78,6 +81,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     app.include_router(documents.router)
+    app.include_router(chat.router)
 
     if settings.serve_frontend and settings.frontend_dist.is_dir():
         app.mount("/ui", StaticFiles(directory=settings.frontend_dist, html=True), name="ui")
