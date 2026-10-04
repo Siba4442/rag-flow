@@ -103,16 +103,26 @@ class ChatState(TypedDict, total=False):
 
 
 # ------------------------------------------------------------------------------ tool
+def _int_or_none(value: object) -> int | None:
+    try:
+        return int(value) if value is not None and not isinstance(value, bool) else None  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return None
+
+
 def _source(n: int, doc_meta: dict[str, Any], text: str, score: float) -> dict[str, Any]:
+    """Plain-Python source record: it is checkpointed, and numpy scalars from some stores
+    are not serialisable by the checkpointer."""
     source = doc_meta.get("source")
+    file_id = doc_meta.get("file_id")
     return {
         "n": n,
-        "file_id": doc_meta.get("file_id"),
+        "file_id": str(file_id) if file_id is not None else None,
         "filename": str(source).rsplit("/", 1)[-1] if source else None,
-        "page": doc_meta.get("page"),
-        "chunk_index": doc_meta.get("chunk_index"),
-        "score": score,
-        "text": text,
+        "page": _int_or_none(doc_meta.get("page")),
+        "chunk_index": _int_or_none(doc_meta.get("chunk_index")),
+        "score": float(score),
+        "text": str(text),
     }
 
 

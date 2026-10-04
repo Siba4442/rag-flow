@@ -94,7 +94,9 @@ def build_retrieve_graph() -> CompiledStateGraph[
     graph.add_edge("embed_query", "search")
     graph.add_edge("search", "apply_threshold")
     graph.add_edge("apply_threshold", END)
-    return graph.compile(name="retrieve")
+    # Stateless: never inherit a parent (chat) checkpointer, or every query vector
+    # would be written into the conversation's checkpoints.
+    return graph.compile(name="retrieve", checkpointer=False)
 
 
 RETRIEVE_GRAPH = build_retrieve_graph()

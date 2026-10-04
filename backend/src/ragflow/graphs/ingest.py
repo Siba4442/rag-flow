@@ -175,7 +175,7 @@ def build_ingest_graph() -> CompiledStateGraph[IngestState, IngestContext, Inges
     graph.add_conditional_edges("split", fan_out, ["store_batch", "finalize"])
     graph.add_edge("store_batch", "finalize")
     graph.add_edge("finalize", END)
-    return graph.compile(name="ingest")
+    return graph.compile(name="ingest", checkpointer=False)
 
 
 INGEST_GRAPH = build_ingest_graph()

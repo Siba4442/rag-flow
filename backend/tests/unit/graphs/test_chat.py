@@ -145,3 +145,26 @@ def test_thread_id_validation(bad: str) -> None:
 
     with pytest.raises(ValidationError):
         ChatRequest(message="hi", thread_id=bad)
+
+
+async def test_sources_survive_checkpoint_serialisation() -> None:
+    """numpy scores/pages from stores must not break the Postgres/msgpack checkpointer."""
+    import numpy as np
+
+    from ragflow.graphs.chat import _source
+
+    src = _source(
+        1, {"file_id": "f", "page": np.int64(2), "chunk_index": np.int64(0)}, "t", np.float64(0.25)
+    )
+    assert type(src["score"]) is float
+    assert type(src["page"]) is int
+
+    store = await _store()
+    model = _model([_tool_call("secret"), AIMessage("ok [1]")], ["yes"])
+    graph = build_chat_graph(InMemorySaver())
+    cfg: Any = {"configurable": {"thread_id": "alice:ser"}}
+    await graph.ainvoke(turn_input("q"), cfg, context=_ctx(store, model))
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    state = await graph.aget_state(cfg)
+    JsonPlusSerializer().dumps_typed(state.values)  # raises on numpy scalars

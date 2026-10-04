@@ -20,7 +20,7 @@ def _cosine_distance(a: Sequence[float], b: Sequence[float]) -> float:
     nb = math.sqrt(sum(y * y for y in b))
     if na == 0 or nb == 0:
         return 1.0
-    return 1.0 - dot / (na * nb)
+    return float(1.0 - dot / (na * nb))
 
 
 class InMemoryScopedStore:
