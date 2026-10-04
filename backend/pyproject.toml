@@ -1,7 +1,7 @@
 [project]
 name = "ragflow"
 version = "0.1.0"
-description = "LangGraph rewrite of LibreChat's RAG API: ingestion, scoped retrieval and agentic RAG chat"
+description = "RAG Flow: self-hosted document Q&A with cited answers, built on LangGraph"
 readme = "README.md"
 authors = [{ name = "Siba" }]
 requires-python = ">=3.12,<3.14"

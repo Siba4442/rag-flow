@@ -1,3 +1,4 @@
-# ragflow backend
+# RAG Flow backend
 
-LangGraph rewrite of LibreChat's RAG API. See the repo root README.
+FastAPI + LangGraph service: ingestion, owner-scoped retrieval and cited, agentic chat.
+See the [project README](../README.md) for setup and configuration.

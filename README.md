@@ -1,122 +1,177 @@
-# RAG Flow
+<h1 align="center">RAG Flow</h1>
 
-A LangGraph rewrite of [LibreChat's RAG API](https://github.com/danny-avila/rag_api), plus a document chat with cited answers and a small web UI.
+<p align="center"><strong>Every claim, cited.</strong><br />
+Upload your documents, ask questions, and get answers where every sentence points to the passage it came from.</p>
 
-- **Drop-in for LibreChat.** Same endpoints, form fields and response shapes as rag-api (`/embed`, `/query`, `/query_multiple`, `/documents`, …).
-- **Built on LangGraph.** Ingestion, retrieval and chat are each a `StateGraph`.
-- **Vector stores.** PGVector by default; Pinecone, Chroma or MongoDB Atlas with one setting.
-- **Chat with your files.** `POST /chat` streams answers over SSE. Every claim is cited to a stored passage, and conversations are kept in Postgres.
-- **Reading-room UI.** Vite + TypeScript, no framework. Sources sit in the margin and light up when you hover a citation.
+---
 
-```
-rag-flow/
-  backend/    Python 3.12, uv, FastAPI, LangGraph   (src/ragflow)
-  frontend/   Vite + TypeScript, no framework
-  rag-api/    original LibreChat service, kept for reference (git-ignored)
-```
+RAG Flow is a self-hosted document question-answering app. It ingests your files, indexes them in a vector database, and answers questions with an agent that searches, checks its evidence, and cites it. You can verify each claim against the source with one hover.
+
+It's built on **LangGraph** and **FastAPI**, and has a fast, framework-free web UI.
+
+## Highlights
+
+- **Cited answers.** Each answer links its claims to numbered passages. Hover a citation and the passage lights up beside it. A coverage bar shows how many claims are backed by a source.
+- **An agent that checks its evidence.** The chat graph decides when to search, grades whether the retrieved passages are relevant, and rewrites the query if they aren't, before it answers.
+- **Your vector store.** PGVector by default; Pinecone, Chroma or MongoDB Atlas with one setting.
+- **Your models.** OpenAI, Anthropic, Google, AWS Bedrock, Ollama, Hugging Face, or any OpenAI-compatible endpoint such as OpenRouter, for both chat and embeddings.
+- **Private by design.** Optional JWT auth. Every read, search and delete is filtered by owner inside the database query, so one user can never see another's files or conversations.
+- **Conversation memory.** Threads are stored in Postgres and survive restarts.
+- **Many file types.** PDF, Word, Excel, PowerPoint, Markdown, CSV, EPUB, XML, JSON and source code. Optional LlamaParse or Docling handle scanned PDFs and complex layouts.
+- **Works with LibreChat.** The document API (`/embed`, `/query`, `/query_multiple`, `/documents`, …) speaks the same protocol, so RAG Flow can serve as LibreChat's RAG backend.
 
 ## How it works
 
-| Graph | Nodes | Used by |
+Three LangGraph graphs do the work:
+
+| Graph | Steps | Used by |
 |---|---|---|
-| `ingest` | `load → split → store_batch` (fan-out via `Send`, `PARALLEL_EXECUTION` wide) `→ finalize` | `/embed`, `/embed-upload`, `/local/embed` |
-| `retrieve` | `embed_query` (LRU-cached) `→ search → apply_threshold` | `/query`, `/query_multiple`, chat tool |
-| `chat` | `generate_query_or_respond → retrieve → grade → rewrite_question \| generate_answer` | `/chat` |
+| **Ingest** | load → split → embed and store in parallel batches → finalize | uploads |
+| **Retrieve** | embed query (cached) → owner-scoped search → distance threshold | search, chat |
+| **Chat** | decide to search → retrieve → grade relevance → rewrite the query or answer | `/chat` |
 
-Things that hold everywhere:
+- **Failed uploads roll back.** If any embedding batch fails, every chunk from that upload is removed. Earlier uploads of the same file are kept.
+- **The model can't widen its own access.** It only chooses the search text. Which files and owners it can see come from the request.
 
-- **Owner scope is enforced in the store query, before ranking.** Every store method takes the caller's owners; a file id is never treated as an authorization. In chat, owners and file ids come from the run context, and the model only chooses the search text.
-- **Failed batches roll back.** If any embedding batch fails, every chunk from that ingestion attempt is deleted. Earlier uploads of the same file are kept.
-- **Sub-graphs keep no state.** `ingest` and `retrieve` compile with `checkpointer=False`, so conversation checkpoints only contain the conversation.
+```
+rag-flow/
+  backend/    Python 3.12, FastAPI, LangGraph  (src/ragflow)
+  frontend/   Vite + TypeScript, no framework
+```
 
-### Vector stores (`VECTOR_DB_TYPE`)
+## Quick start
 
-| Value | Backend | Notes |
-|---|---|---|
-| `pgvector` (default) | `langchain_postgres.PGVectorStore` | New table `rag_chunks` with indexed `file_id` / `user_id` columns and an HNSW index. Chat memory uses the same Postgres. |
-| `chroma` | `langchain-chroma` | `CHROMA_HOST` for a server, otherwise a local `CHROMA_PERSIST_DIR` |
-| `pinecone` | `langchain-pinecone` | Vector ids are prefixed with owner and file, so listing and deleting work on serverless indexes |
-| `atlas-mongo` | `langchain-mongodb` | Ported from rag-api; the search index must allow filtering on `file_id` and `user_id` |
-| `memory` | in-process | Tests and quick trials only |
-
-Chat memory is persistent only with `pgvector`. With the other stores it is in-process and is lost on restart.
-
-### Is LlamaIndex needed?
-
-Not as a framework. Its indices, retrievers and query engines duplicate what LangChain and LangGraph already do here. It is worth using in one place: **LlamaParse**, for scanned PDFs, tables and complex layouts. Set `PDF_PARSER=llamaparse` (extra `llamaparse`, needs `LLAMA_CLOUD_API_KEY`). `PDF_PARSER=docling` is a free, local alternative. The default stays `pypdf`, as in rag-api.
-
-### Why no frontend framework?
-
-The UI has three views, little state and one streaming connection. Plain TypeScript modules (a typed API client, a small store and an escape-first renderer) produce a ~16 kB bundle. Vite provides the dev server, the `/api` proxy and the build. If the UI grows to include routing, auth flows or many components, Vue 3 would be the next step.
-
-## Quick start (development)
-
-Requirements: [uv](https://docs.astral.sh/uv/), Node 22+, and Docker for Postgres. On WSL, turn on *Docker Desktop → Settings → Resources → WSL integration* for your distro.
+Requirements: Docker. For local development you also need [uv](https://docs.astral.sh/uv/) and Node 22+.
 
 ```bash
-cp .env.example .env              # set POSTGRES_PASSWORD, RAG_OPENAI_API_KEY, CHAT_MODEL …
-docker compose up -d db           # pgvector on 127.0.0.1:5433
+cp .env.example .env        # set POSTGRES_PASSWORD, your model keys and CHAT_MODEL
+docker compose up -d --build
+```
+
+Open **http://127.0.0.1:8000**. The design system is at **/design**.
+
+```bash
+docker compose down         # stop (data is kept in Docker volumes)
+docker compose logs -f app  # follow logs
+```
+
+### Using OpenRouter (or any OpenAI-compatible API)
+
+```bash
+EMBEDDINGS_PROVIDER=openai
+RAG_OPENAI_BASEURL=https://openrouter.ai/api/v1
+RAG_OPENAI_API_KEY=sk-or-...
+EMBEDDINGS_MODEL=qwen/qwen3-embedding-8b
+RAG_CHECK_EMBEDDING_CTX_LENGTH=false
+
+OPENAI_API_KEY=sk-or-...
+OPENAI_API_BASE=https://openrouter.ai/api/v1
+CHAT_MODEL=openai:<provider>/<model>
+```
+
+The `openai:` prefix in `CHAT_MODEL` selects the OpenAI-compatible client; the rest is the model id sent to the API. Choose your embeddings model before uploading anything, because switching later means re-uploading.
+
+### Local development
+
+```bash
+docker compose up -d db                       # Postgres + pgvector on 127.0.0.1:5433
 
 cd backend
-uv sync --extra openai --extra anthropic   # add: chroma, pinecone, mongo, ollama, google, bedrock, huggingface, llamaparse, docling
-uv run ragflow                    # http://127.0.0.1:8000  (API docs at /docs)
-
+uv sync --extra openai --extra anthropic      # more: chroma, pinecone, mongo, ollama, google,
+uv run ragflow                                #   bedrock, huggingface, llamaparse, docling
+                                              # API on :8000, docs at /docs
 cd ../frontend
 npm install
-npm run dev                       # http://localhost:5173  (proxies /api → :8000)
+npm run dev                                   # UI on :5173, proxies /api to :8000
 ```
 
-Run everything in one container. The UI is served at `/ui`:
+## The interface
 
-```bash
-docker compose up -d --build      # http://127.0.0.1:8000
-RAGFLOW_EXTRAS="openai chroma" docker compose up -d --build   # pick extras
-```
+The UI uses a symmetric three-column layout.
+
+- **Left:** navigation (Home, Ask, Search passages), your library and your conversations. Tick a file to put it in scope. A status card shows the connected models and store.
+- **Centre:**
+  - **Home** shows an ask panel with suggested questions, library and activity stats, and recent answers.
+  - **Ask** shows the conversation.
+  - **Search passages** ranks stored passages with no generation.
+- **Right:** the evidence. Numbered sources, the highlighted passage for the citation you're hovering, claim coverage, and an *Add files* drop zone.
+
+Light, dark and auto themes are included. One accent, gold, is reserved for evidence and selection.
+
+## Vector stores
+
+| `VECTOR_DB_TYPE` | Backend | Notes |
+|---|---|---|
+| `pgvector` (default) | `langchain_postgres.PGVectorStore` | `rag_chunks` table with indexed owner and file columns; HNSW index up to 2000 dimensions (larger embeddings use exact search within the selected files). Chat memory uses the same database. |
+| `chroma` | Chroma | `CHROMA_HOST` for a server, or a local `CHROMA_PERSIST_DIR` |
+| `pinecone` | Pinecone | Works with serverless indexes |
+| `atlas-mongo` | MongoDB Atlas Vector Search | The search index must allow filtering on `file_id` and `user_id` |
+
+Chat memory persists with `pgvector`. With the other stores it is kept in process.
 
 ## Configuration
 
-`.env` uses the same names as rag-api (`EMBEDDINGS_PROVIDER`, `EMBEDDINGS_MODEL`, `RAG_OPENAI_API_KEY`, `POSTGRES_*`, `DB_HOST`, `CHUNK_SIZE`, `CHUNK_OVERLAP`, `EMBEDDING_BATCH_SIZE`, `PARALLEL_EXECUTION`, `RAG_DISTANCE_THRESHOLD`, `JWT_SECRET`, `COLLECTION_NAME`, `ATLAS_*` …). An existing rag-api `.env` mostly carries over. New settings:
+All settings come from environment variables (see `.env.example`).
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `EMBEDDINGS_PROVIDER` / `EMBEDDINGS_MODEL` | `openai` / provider default | `openai`, `azure`, `google_genai`, `vertexai`, `bedrock`, `ollama`, `huggingface`, `huggingfacetei` |
 | `CHAT_MODEL` | `openai:gpt-5-mini` | Any `init_chat_model` id, e.g. `anthropic:claude-sonnet-5-5`, `ollama:llama3.2` |
 | `GRADER_MODEL` | = `CHAT_MODEL` | A cheaper model for relevance grading |
 | `CHAT_RETRIEVAL_K` / `CHAT_MAX_REWRITES` | `6` / `2` | Passages per search / query rewrites per turn |
-| `ENTITY_ID_POLICY` | `claim` | See *Security changes* |
-| `LOCAL_EMBED_SCOPE` | `owner` | See *Security changes* |
-| `PGVECTOR_TABLE` | `rag_chunks` | Chunk table name |
-| `PINECONE_API_KEY` / `PINECONE_INDEX` / `PINECONE_NAMESPACE` | | Pinecone |
-| `CHROMA_HOST` / `CHROMA_PORT` / `CHROMA_PERSIST_DIR` | | Chroma |
-| `PDF_PARSER` / `LLAMA_CLOUD_API_KEY` | `pypdf` | `pypdf`, `llamaparse` or `docling` |
+| `VECTOR_DB_TYPE` | `pgvector` | See *Vector stores* |
+| `POSTGRES_*`, `DB_HOST`, `DB_PORT` | | Database connection |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `1500` / `100` | Text splitting |
+| `EMBEDDING_BATCH_SIZE` / `PARALLEL_EXECUTION` | `500` / `2` | Ingestion batching and concurrency |
+| `RAG_DISTANCE_THRESHOLD` | unset | Drop matches farther than this distance |
+| `PDF_PARSER` | `pypdf` | `pypdf`, `llamaparse` (needs `LLAMA_CLOUD_API_KEY`) or `docling` |
+| `JWT_SECRET` | unset | Turns on authentication |
+| `ENTITY_ID_POLICY` | `claim` | How a caller-supplied `entity_id` is treated (see *Security*) |
+| `LOCAL_EMBED_SCOPE` | `owner` | Which paths `/local/embed` may read |
 | `CORS_ORIGINS` | `*` | Comma-separated |
-| `SERVE_FRONTEND` / `FRONTEND_DIST` | `false` | Serve the built UI from FastAPI |
+| `SERVE_FRONTEND` | `false` | Serve the built UI from FastAPI (on in Docker) |
 
-If `CHAT_MODEL` can't be initialised (for example, a missing key or package), chat is disabled and `/chat` returns 503. The rest of the API still works.
+If `CHAT_MODEL` can't be initialised (for example, a missing key), chat is disabled and `/chat` returns 503. The rest of the app keeps working.
 
-## Differences from rag-api
+## API
 
-**Security changes (breaking).** These only apply when `JWT_SECRET` is set.
+| Endpoint | Purpose |
+|---|---|
+| `POST /embed`, `POST /embed-upload` | Upload and index a file |
+| `POST /local/embed` | Index a file already on the server's upload volume |
+| `POST /text` | Extract text without indexing |
+| `GET /files`, `GET /ids` | List your files |
+| `GET /documents`, `DELETE /documents` | Read or delete files' passages |
+| `GET /documents/{id}/context` | A file's full text, in order |
+| `POST /query`, `POST /query_multiple` | Ranked passages for a query |
+| `POST /chat` | Streamed, cited answer over SSE (`token`, `step`, `sources`, `done`, `error`) |
+| `GET` / `DELETE /chat/threads/{id}` | Conversation history |
+| `GET /info`, `GET /health` | Connected models and store; health check |
 
-- **`ENTITY_ID_POLICY=claim`.** A caller-supplied `entity_id` is honoured only if it appears in the token's `entities` claim; otherwise the request gets 403. rag-api trusted it blindly, so any user could read or delete another owner's files. For LibreChat, set `ENTITY_ID_POLICY=trust` (rag-api behaviour), or issue tokens that include the claim.
-- **`LOCAL_EMBED_SCOPE=owner`.** `/local/embed` only reads files under `{RAG_UPLOAD_DIR}/{owner}/`. Set `any` to restore rag-api behaviour.
+Interactive docs are at `/docs`.
 
-**Bug fixes.**
+## Security
 
-- `/health` returns a real 503 when unhealthy. rag-api sent 200 with a JSON array.
-- `/embed-upload` and `/local/embed` return `status: false` when storing fails. rag-api reported success.
-- Error responses carry a reference id instead of raw exception text, which could leak DSNs or paths. The details are in the server log.
-- Upload filenames and owner ids can't affect where temp files are written.
-- CORS preflight works when JWT auth is on.
+- **Authentication:** set `JWT_SECRET` to require HS256 bearer tokens. The token's `id` claim is the user.
+- **Owner scoping** is enforced inside every store query, before ranking. A file id alone never grants access.
+- **`ENTITY_ID_POLICY`** controls requests that name an `entity_id` (for example, an agent sharing files across users):
+  - `claim` (default) honours it only if it appears in the token's `entities` claim.
+  - `trust` accepts it as asserted. Use this behind a gateway that authorises entities itself, such as a LibreChat deployment.
+  - `deny` ignores it.
+- **Uploads** go to a private temp folder under random names, so filenames can't steer where they're written. With `LOCAL_EMBED_SCOPE=owner`, `/local/embed` only reads from the caller's own folder.
+- **Errors** return a reference id instead of internal details. The details go to the server log.
 
-**Storage.** PGVector data lives in a new table. To copy rag-api data across without re-embedding:
+## Importing existing LangChain PGVector data
+
+If you already have embeddings in LangChain's classic `langchain_pg_embedding` tables, copy them into RAG Flow without re-embedding:
 
 ```bash
 cd backend
 uv run python scripts/migrate_legacy_pgvector.py --dry-run
-uv run python scripts/migrate_legacy_pgvector.py --collection testcollection
+uv run python scripts/migrate_legacy_pgvector.py --collection <name>
 ```
 
-**New endpoints.** `GET /files`, `POST /chat` (SSE: `token`, `step`, `sources`, `done`, `error`), `GET`/`DELETE /chat/threads/{id}`.
+Keep the same embeddings model for imported data.
 
 ## Development
 
@@ -125,12 +180,12 @@ cd backend
 uv run ruff check && uv run ruff format --check
 uv run mypy                       # strict
 uv run pytest                     # unit tests
-uv run pytest -m integration      # pgvector + checkpointer + migration (needs Docker)
+uv run pytest -m integration      # pgvector, checkpointer, migration (needs Docker)
 
 cd ../frontend
 npm run typecheck && npm run build
 ```
 
-- **Language servers.** Pyright reads `pyrightconfig.json` at the repo root, which points at `backend/.venv`. The TypeScript server uses `frontend/tsconfig.json`.
-- **MCP servers.** `.mcp.json` registers the LangChain docs server and a Conventional Commit message generator for Claude Code.
-- **WSL.** For faster tooling, clone the repo inside the Linux filesystem (e.g. `~/code`) rather than `/mnt/c`.
+- **Language servers:** Pyright reads `pyrightconfig.json` at the repo root, which points at `backend/.venv`. TypeScript uses `frontend/tsconfig.json`.
+- **MCP:** `.mcp.json` registers the LangChain docs server and a Conventional Commit message generator for Claude Code.
+- **WSL:** for faster tooling, keep the repo on the Linux filesystem (e.g. `~/code`) rather than `/mnt/c`.
